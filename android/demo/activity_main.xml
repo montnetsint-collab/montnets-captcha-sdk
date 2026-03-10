@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="32dp"
+    android:background="#F0F4FF">
+
+    <!-- Branding -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Montnets Captcha Demo"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="#1E2744"
+        android:layout_marginBottom="8dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Enter any credentials and tap Sign In."
+        android:textSize="13sp"
+        android:textColor="#8B9AC0"
+        android:layout_marginBottom="32dp"/>
+
+    <!-- Username -->
+    <EditText
+        android:id="@+id/et_username"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Username"
+        android:inputType="text"
+        android:padding="14dp"
+        android:layout_marginBottom="12dp"
+        android:background="@android:drawable/edit_text"
+        android:textSize="14sp"
+        android:textColor="#1E2744"
+        android:textColorHint="#B0BCD8"
+        android:autofillHints="username"/>
+
+    <!-- Password -->
+    <EditText
+        android:id="@+id/et_password"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Password"
+        android:inputType="textPassword"
+        android:padding="14dp"
+        android:layout_marginBottom="20dp"
+        android:background="@android:drawable/edit_text"
+        android:textSize="14sp"
+        android:textColor="#1E2744"
+        android:textColorHint="#B0BCD8"
+        android:autofillHints="password"/>
+
+    <!-- Sign In button -->
+    <Button
+        android:id="@+id/btn_login"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Sign In"
+        android:backgroundTint="#4361EE"
+        android:textColor="#FFFFFF"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="24dp"/>
+
+    <!-- Status / result text -->
+    <TextView
+        android:id="@+id/tv_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="13sp"
+        android:textColor="#4A5578"
+        android:lineSpacingExtra="4dp"/>
+
+</LinearLayout>

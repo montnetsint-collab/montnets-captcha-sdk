@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<!--
+  ============================================================================
+  Montnets International Sliding-Puzzle Captcha — Integration Demo
+  ============================================================================
+  This file demonstrates how to integrate the Montnets International Captcha SDK into any
+  web application.  Read through the comments carefully — every key step is
+  explained so you can copy and adapt the relevant sections into your own
+  project.
+
+  What this demo shows:
+    1. Loading the SDK script.
+    2. Calling CaptchaSDK.init() with a tokenProvider and callbacks.
+    3. Triggering CaptchaSDK.show() from a login button.
+    4. Receiving the captchaToken in the onSuccess callback and verifying it
+       server-side (POST /captcha/token/check).
+
+  ⚠  IMPORTANT — tokenProvider in this demo:
+       For simplicity, the tokenProvider below calls POST /captcha/init
+       DIRECTLY from the browser so the demo is self-contained.
+       In a real production deployment you MUST NOT expose your appSecret in
+       browser code.  Instead:
+         • Create a lightweight backend endpoint (e.g. GET /api/captcha-token)
+           that stores the appId/appSecret securely on your server and returns
+           only the accessToken to the browser.
+         • Your tokenProvider then calls that endpoint:
+             tokenProvider: async () => {
+               const res = await fetch('/api/captcha-token');
+               return (await res.json()).accessToken;
+             }
+
+  SDK version : 1.0.0
+  Author      : Leon Huang  <huangzxc@montnets.com>
+  Homepage    : https://www.int-montnets.com
+  ============================================================================
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Montnets Captcha SDK — Integration Demo</title>
+
+  <!-- ======================================================================
+    STEP 1 — Load the SDK
+    Include montnets-captcha-sdk.js in your page's <head> or before </body>.
+    The script exposes a single global: window.CaptchaSDK
+    Replace the src path with the actual URL where you host the SDK file.
+  ====================================================================== -->
+  <script src="/montnets-captcha-sdk.js"></script>
+
+  <style>
+    /* ── Reset & base ────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue',
+                   'PingFang SC', Arial, sans-serif;
+      background: #f0f4ff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      color: #1e2744;
+    }
+
+    /* ── Branding header ─────────────────────────────────────────────────── */
+    .brand {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .brand-logo {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #4361ee;
+      text-transform: uppercase;
+    }
+    .brand-tagline {
+      font-size: 11px;
+      color: #8b9ac0;
+      margin-top: 3px;
+    }
+
+    /* ── Login card ──────────────────────────────────────────────────────── */
+    .card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 40px 44px 44px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 8px 40px rgba(67, 97, 238, .12),
+                  0 2px 8px  rgba(0, 0, 0, .06);
+    }
+
+    .card-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #1e2744;
+      margin-bottom: 4px;
+    }
+    .card-sub {
+      font-size: 13px;
+      color: #8b9ac0;
+      margin-bottom: 28px;
+    }
+
+    /* ── Form fields ─────────────────────────────────────────────────────── */
+    .field {
+      margin-bottom: 18px;
+    }
+    .field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #4a5578;
+      margin-bottom: 6px;
+    }
+    .field input {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1.5px solid #dce1f0;
+      border-radius: 8px;
+      font-size: 14px;
+      color: #1e2744;
+      background: #fafbff;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .field input:focus {
+      border-color: #4361ee;
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, .12);
+    }
+    .field input.invalid {
+      border-color: #ff4d4f;
+      box-shadow: 0 0 0 3px rgba(255, 77, 79, .1);
+    }
+    .field .err-msg {
+      font-size: 12px;
+      color: #ff4d4f;
+      margin-top: 4px;
+      display: none;
+    }
+    .field.has-error .err-msg { display: block; }
+
+    /* ── Submit button ───────────────────────────────────────────────────── */
+    .btn-submit {
+      width: 100%;
+      padding: 13px;
+      background: #4361ee;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 6px;
+      transition: background .2s, opacity .2s, transform .1s;
+    }
+    .btn-submit:hover:not(:disabled) {
+      background: #3451d1;
+      transform: translateY(-1px);
+    }
+    .btn-submit:active:not(:disabled) { transform: translateY(0); }
+    .btn-submit:disabled { opacity: .45; cursor: not-allowed; }
+
+    /* ── Status banner (shown after login attempt) ───────────────────────── */
+    .status-banner {
+      display: none;
+      margin-top: 18px;
+      padding: 13px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1.5;
+    }
+    .status-banner.success {
+      display: block;
+      background: #f6ffed;
+      color: #389e0d;
+      border: 1px solid #b7eb8f;
+    }
+    .status-banner.error {
+      display: block;
+      background: #fff2f0;
+      color: #cf1322;
+      border: 1px solid #ffccc7;
+    }
+    .status-banner .banner-title {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .status-banner code {
+      display: inline-block;
+      background: rgba(0,0,0,.06);
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      word-break: break-all;
+    }
+
+    /* ── Divider ─────────────────────────────────────────────────────────── */
+    .divider {
+      border: none;
+      border-top: 1px solid #edf0f8;
+      margin: 24px 0 18px;
+    }
+
+    /* ── Integration note (shown at the bottom of the card) ─────────────── */
+    .note {
+      font-size: 12px;
+      color: #8b9ac0;
+      line-height: 1.6;
+    }
+    .note strong { color: #4a5578; }
+    .note a { color: #4361ee; text-decoration: none; }
+    .note a:hover { text-decoration: underline; }
+
+    /* ── Footer ──────────────────────────────────────────────────────────── */
+    .page-footer {
+      margin-top: 20px;
+      font-size: 11px;
+      color: #b0bcd8;
+      text-align: center;
+    }
+    .page-footer a { color: #8b9ac0; text-decoration: none; }
+    .page-footer a:hover { text-decoration: underline; }
+
+    /* ── Credentials panel (collapsible, above the login form) ──────────── */
+    .cred-panel {
+      border: 1px dashed #d0d7f0;
+      border-radius: 8px;
+      padding: 14px 16px 10px;
+      margin-bottom: 22px;
+      background: #f7f9ff;
+    }
+    .cred-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .6px;
+      text-transform: uppercase;
+      color: #8b9ac0;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .cred-title .badge {
+      background: #e8edff;
+      color: #4361ee;
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+    .cred-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .cred-row .cred-field { flex: 1; min-width: 0; }
+    .cred-field label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: #6b7aaa;
+      margin-bottom: 4px;
+    }
+    .cred-field input {
+      width: 100%;
+      padding: 7px 10px;
+      border: 1.5px solid #dce1f0;
+      border-radius: 6px;
+      font-size: 12px;
+      font-family: 'Courier New', monospace;
+      color: #1e2744;
+      background: #fff;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .cred-field input:focus { border-color: #4361ee; }
+    .cred-hint {
+      font-size: 11px;
+      color: #b0bcd8;
+      line-height: 1.5;
+    }
+
+    /* ── Server info bar (shown above the card) ─────────────────────────── */
+    .server-bar {
+      font-size: 11px;
+      color: #8b9ac0;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 6px;
+      padding: 5px 12px;
+      margin-bottom: 16px;
+      letter-spacing: .2px;
+    }
+    .server-bar span { color: #a5b4fc; font-family: 'Courier New', monospace; }
+
+    /* ── Spinner (reused inside the button while loading) ────────────────── */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,.35);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .75s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Branding -->
+  <div class="brand">
+    <div class="brand-logo">Montnets International</div>
+    <div class="brand-tagline">Sliding-Puzzle Captcha SDK — Integration Demo</div>
+  </div>
+
+  <!-- Server info bar: shows the active captcha server URL -->
+  <div class="server-bar" id="server-bar"></div>
+
+  <!-- Login card -->
+  <div class="card">
+    <div class="card-title">Sign In</div>
+    <div class="card-sub">
+      Enter any credentials and click <strong>Sign In</strong> to experience
+      the captcha verification flow.
+    </div>
+
+    <!-- ── Credentials panel ──────────────────────────────────────────────
+         Enter your appId and appSecret here for testing.
+         In production these values must never appear in browser code —
+         proxy the /captcha/init call through your own backend instead.
+    ──────────────────────────────────────────────────────────────────── -->
+    <div class="cred-panel">
+      <div class="cred-title">
+        API Credentials
+        <span class="badge">Demo only</span>
+      </div>
+      <div class="cred-row">
+        <div class="cred-field">
+          <label for="inp-app-id">App ID</label>
+          <input type="text" id="inp-app-id" placeholder="e.g. MG0001"
+                 oninput="onCredChange()" autocomplete="off">
+        </div>
+        <div class="cred-field">
+          <label for="inp-app-secret">App Secret</label>
+          <input type="password" id="inp-app-secret" placeholder="Your app secret"
+                 oninput="onCredChange()" autocomplete="off">
+        </div>
+      </div>
+      <div class="cred-hint">
+        ⚠ Never expose App Secret in frontend code in production.
+        Use a backend proxy to exchange credentials for an accessToken.
+      </div>
+    </div>
+
+    <!-- Username field -->
+    <div class="field" id="field-username">
+      <label for="username">Username</label>
+      <input type="text" id="username" placeholder="Enter your username"
+             autocomplete="username">
+      <div class="err-msg">Username is required.</div>
+    </div>
+
+    <!-- Password field -->
+    <div class="field" id="field-password">
+      <label for="password">Password</label>
+      <input type="password" id="password" placeholder="Enter your password"
+             autocomplete="current-password">
+      <div class="err-msg">Password is required.</div>
+    </div>
+
+    <!--
+      Sign In button.
+      Clicking it validates the form, then triggers CaptchaSDK.show().
+      The actual login logic runs inside the onSuccess callback — see the
+      JavaScript section below.
+    -->
+    <button class="btn-submit" id="btn-sign-in" onclick="handleSignIn()">
+      Sign In
+    </button>
+
+    <!-- Result banner — shown after the captcha + token-check flow completes -->
+    <div class="status-banner" id="status-banner"></div>
+
+    <hr class="divider">
+
+    <!-- Brief integration note for developers reading this demo -->
+    <div class="note">
+      <strong>How to integrate in 3 steps:</strong><br>
+      1. Include <code>montnets-captcha-sdk.js</code> in your page.<br>
+      2. Call <code>CaptchaSDK.init()</code> once on page load, providing a
+         <code>tokenProvider</code> and an <code>onSuccess</code> callback.<br>
+      3. Call <code>CaptchaSDK.show()</code> from your submit button.<br><br>
+      See <a href="https://www.int-montnets.com" target="_blank">
+      www.int-montnets.com</a> for full API documentation.
+    </div>
+  </div>
+
+  <!-- Page footer -->
+  <div class="page-footer">
+    &copy;
+    <a href="https://www.int-montnets.com" target="_blank">
+      MONTNETS INTERNATIONAL COMMUNICATIONS (HK) CO., LTD
+    </a>
+    &nbsp;|&nbsp; SDK v<span id="sdk-version"></span>
+  </div>
+
+
+  <script>
+    // =========================================================================
+    //  DEMO CONFIGURATION
+    //  ─────────────────────────────────────────────────────────────────────────
+    //  APP_ID / APP_SECRET: credentials issued by Montnets for your application.
+    //
+    //  CAPTCHA_SERVER_URL: the base URL of the captcha service.
+    //    It is read from the "server" query parameter so you can share a
+    //    pre-configured link without editing this file:
+    //
+    //      montnets-captcha-demo.html?server=https://captcha-api.example.com
+    //
+    //    When the parameter is absent the demo runs against the same origin
+    //    (suitable for local development or reverse-proxy deployments).
+    //
+    //  ⚠  SECURITY WARNING ──────────────────────────────────────────────────
+    //  APP_SECRET is shown here only because this file is a standalone demo.
+    //  In production NEVER expose APP_SECRET in frontend code.
+    //  Create a thin backend endpoint (e.g. GET /api/captcha-token) that
+    //  returns the accessToken, and update tokenProvider accordingly:
+    //    tokenProvider: async () => {
+    //      const r = await fetch('/api/captcha-token');
+    //      return (await r.json()).accessToken;
+    //    }
+    // =========================================================================
+    // Read server URL from the ?server= query parameter; fall back to same-origin.
+    var CAPTCHA_SERVER_URL = (new URLSearchParams(window.location.search).get('server') || '').replace(/\/$/, '');
+
+    // Credentials are read dynamically from the input fields at call time.
+    function getAppId()     { return document.getElementById('inp-app-id').value.trim(); }
+    function getAppSecret() { return document.getElementById('inp-app-secret').value.trim(); }
+
+    // Called whenever App ID or App Secret changes.
+    // Clears the cached accessToken so the next CaptchaSDK.show() fetches a
+    // fresh one with the updated credentials.
+    function onCredChange() {
+      CaptchaSDK.clearCache();
+    }
+
+
+    // =========================================================================
+    //  STEP 2 — Initialise the SDK
+    //  ─────────────────────────────────────────────────────────────────────────
+    //  Call CaptchaSDK.init() once when the page loads.  You must provide at
+    //  least tokenProvider and onSuccess.
+    // =========================================================================
+    CaptchaSDK.init({
+
+      // The base URL of the captcha backend (same as CAPTCHA_SERVER_URL above).
+      serverUrl: CAPTCHA_SERVER_URL,
+
+      // -----------------------------------------------------------------------
+      // tokenProvider  (REQUIRED)
+      // -----------------------------------------------------------------------
+      // An async function that resolves with an accessToken string.
+      // The SDK calls it automatically when a fresh token is needed, and
+      // caches the result in sessionStorage for up to 2 hours so subsequent
+      // captcha opens are instant.
+      //
+      // ── DEMO implementation (calls captcha server directly) ──────────────
+      //    This is acceptable for a demo / development environment.
+      //    For production, replace this with a call to YOUR OWN backend.
+      tokenProvider: async function () {
+        var res = await fetch(CAPTCHA_SERVER_URL + '/captcha/init', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            appId:     getAppId(),
+            appSecret: getAppSecret(),
+            timestamp: Date.now(),
+            nonce:     Math.random().toString(36).slice(2)
+          })
+        });
+        var json = await res.json();
+        if (!json.success) throw new Error(json.message || 'Failed to obtain access token');
+        return json.data.accessToken;
+      },
+
+      // -----------------------------------------------------------------------
+      // onSuccess  (REQUIRED)
+      // -----------------------------------------------------------------------
+      // Called after the user passes the sliding-puzzle challenge.
+      // The SDK passes a short-lived captchaToken (string).
+      //
+      // What you must do here:
+      //   1. Send captchaToken to YOUR backend along with the rest of the login
+      //      form data (username, password, etc.).
+      //   2. Your backend verifies the token by calling POST /captcha/token/check
+      //      (server-to-server).  If valid, proceed with the login; otherwise
+      //      reject the request.
+      //
+      // ── DEMO implementation ──────────────────────────────────────────────
+      //    We simulate the server-side check by calling /captcha/token/check
+      //    directly from the browser.  In production your backend does this,
+      //    not the browser.
+      onSuccess: async function (captchaToken) {
+        setButtonState('loading', 'Verifying…');
+
+        try {
+          // ── In production this fetch() call is made by YOUR BACKEND, not here ──
+          var res = await fetch(CAPTCHA_SERVER_URL + '/captcha/token/check', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ appId: getAppId(), captchaToken: captchaToken })
+          });
+          var json = await res.json();
+
+          if (!json.success) {
+            showBanner('error', 'Request Failed', json.message);
+            return;
+          }
+
+          if (json.data.valid) {
+            // ── Token is valid: proceed with your actual login logic ──────────
+            // In a real app you would:
+            //   • Redirect to the dashboard, or
+            //   • Exchange credentials + captchaToken for a session/JWT, etc.
+            showBanner('success',
+              '✓ Verification Passed — Login Successful',
+              'captchaToken: <code>' + captchaToken + '</code><br>' +
+              'The token has been consumed.  ' +
+              'Pass it to your backend together with username/password ' +
+              'to complete authentication.'
+            );
+          } else {
+            // Token was already consumed, expired, or invalid.
+            var msg = {
+              TOKEN_CONSUMED: 'Token already consumed.  Please retry.',
+              TOKEN_EXPIRED:  'Token expired.  Please retry.',
+              TOKEN_INVALID:  'Token invalid.  Please retry.'
+            }[json.data.code] || ('Verification failed: ' + json.data.code);
+            showBanner('error', '✗ Verification Failed', msg);
+          }
+        } catch (e) {
+          showBanner('error', 'Network Error', e.message);
+        } finally {
+          setButtonState('ready', 'Sign In');
+        }
+      },
+
+      // -----------------------------------------------------------------------
+      // onError  (optional)
+      // -----------------------------------------------------------------------
+      // Called when an unrecoverable SDK-level error occurs
+      // (e.g. network failure before the challenge loads).
+      // err.code contains the numeric server ErrorCode when available.
+      onError: function (err) {
+        showBanner('error', 'Captcha Error', err.message);
+        setButtonState('ready', 'Sign In');
+      },
+
+      // -----------------------------------------------------------------------
+      // onClose  (optional)
+      // -----------------------------------------------------------------------
+      // Called whenever the captcha modal is dismissed — whether by the user
+      // clicking × / the backdrop, or automatically after success.
+      onClose: function () {
+        // Re-enable the button if the user dismissed without completing the captcha.
+        if (document.getElementById('btn-sign-in').disabled) {
+          setButtonState('ready', 'Sign In');
+        }
+      },
+
+      // debug: true   // Uncomment to enable verbose console logging during development.
+    });
+
+
+    // =========================================================================
+    //  STEP 2b — Warm up (optional but recommended)
+    //  ─────────────────────────────────────────────────────────────────────────
+    //  warmup() pre-fetches and caches the accessToken immediately on page
+    //  load so there is zero extra latency when the user clicks Sign In and
+    //  the modal opens.  It is a fire-and-forget call — errors are silently
+    //  ignored here; the SDK will retry on next show().
+    // =========================================================================
+    // warmup() is intentionally skipped here because credentials are entered
+    // by the user at runtime.  The SDK will fetch the accessToken automatically
+    // the first time CaptchaSDK.show() is called.
+
+    // Display the SDK version in the page footer.
+    document.getElementById('sdk-version').textContent = CaptchaSDK.version;
+
+    // Show the active server URL in the info bar so the reader can confirm
+    // which backend this demo is pointing at.
+    var bar = document.getElementById('server-bar');
+    bar.innerHTML = CAPTCHA_SERVER_URL
+      ? 'Captcha server: <span>' + escHtml(CAPTCHA_SERVER_URL) + '</span>'
+      : 'Captcha server: <span>(same origin)</span> &nbsp;·&nbsp; tip: append <span>?server=https://your-api.com</span> to change';
+
+
+    // =========================================================================
+    //  STEP 3 — Trigger the captcha from your login button
+    //  ─────────────────────────────────────────────────────────────────────────
+    //  handleSignIn() is bound to the onclick of #btn-sign-in.
+    //  It validates the form fields first, then opens the captcha modal.
+    //  Replace or extend validateForm() with your own validation logic.
+    // =========================================================================
+    function handleSignIn() {
+      // Clear any previous result banner.
+      hideBanner();
+
+      // Validate inputs — username and password must not be empty.
+      if (!validateForm()) return;
+
+      // Disable the button to prevent double-clicks while the modal is open.
+      setButtonState('disabled', 'Sign In');
+
+      // Open the sliding-puzzle captcha modal.
+      // When the user passes, onSuccess() defined above will be called.
+      CaptchaSDK.show();
+    }
+
+
+    // =========================================================================
+    //  Form helpers
+    // =========================================================================
+
+    /** Returns true when all required fields are filled in correctly. */
+    function validateForm() {
+      var ok      = true;
+      var nameEl  = document.getElementById('username');
+      var passEl  = document.getElementById('password');
+      var nameWrap = document.getElementById('field-username');
+      var passWrap = document.getElementById('field-password');
+
+      // Remove previous validation state.
+      nameEl.classList.remove('invalid');
+      passEl.classList.remove('invalid');
+      nameWrap.classList.remove('has-error');
+      passWrap.classList.remove('has-error');
+
+      if (!nameEl.value.trim()) {
+        nameEl.classList.add('invalid');
+        nameWrap.classList.add('has-error');
+        ok = false;
+      }
+      if (!passEl.value.trim()) {
+        passEl.classList.add('invalid');
+        passWrap.classList.add('has-error');
+        ok = false;
+      }
+      return ok;
+    }
+
+    /** Updates the Sign In button appearance. */
+    function setButtonState(state, label) {
+      var btn = document.getElementById('btn-sign-in');
+      if (state === 'loading') {
+        btn.disabled     = true;
+        btn.innerHTML    = '<span class="spinner"></span>' + label;
+      } else if (state === 'disabled') {
+        btn.disabled     = true;
+        btn.textContent  = label;
+      } else {
+        btn.disabled     = false;
+        btn.textContent  = label;
+      }
+    }
+
+    /** Renders the result banner with the given type ('success' | 'error'). */
+    function showBanner(type, title, detail) {
+      var el = document.getElementById('status-banner');
+      el.className = 'status-banner ' + type;
+      el.innerHTML = '<div class="banner-title">' + escHtml(title) + '</div>' + (detail || '');
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function hideBanner() {
+      var el = document.getElementById('status-banner');
+      el.className = 'status-banner';
+      el.innerHTML = '';
+    }
+
+    /** Escapes HTML special characters to prevent XSS in banner text. */
+    function escHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+  </script>
+
+</body>
+</html>

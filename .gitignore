@@ -1,0 +1,18 @@
+# IDE
+.idea/
+*.iml
+
+# macOS
+.DS_Store
+
+# Android build outputs
+*.apk
+*.aab
+build/
+local.properties
+
+# iOS build outputs
+*.xcworkspace
+*.xcuserdata
+DerivedData/
+Pods/

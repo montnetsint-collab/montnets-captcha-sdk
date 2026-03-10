@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<!--
+  Montnets Captcha — Native Bridge Page
+  ──────────────────────────────────────────────────────────────────────────────
+  This page is loaded by MontnetsCaptcha (Android/iOS WebView) as the captcha
+  UI host.  It loads montnets-captcha-sdk.js from the captcha server and sets
+  up a bidirectional JS ↔ Native bridge for token exchange and event callbacks.
+
+  How to use:
+    Copy this file to your project's assets/ folder (Android) or Xcode bundle
+    (iOS).  Do NOT modify it — all configuration is injected by native code.
+-->
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: transparent; }
+  </style>
+  <!--
+    The SDK script is loaded from the captcha server via a relative path.
+    This works because native code loads this HTML with the captcha server URL
+    as the base URL (loadDataWithBaseURL on Android / loadHTMLString+baseURL on iOS),
+    so "/montnets-captcha-sdk.js" resolves to the correct server URL automatically.
+  -->
+  <script src="/montnets-captcha-sdk.js"></script>
+</head>
+<body>
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+//  Pending token callbacks: id → { resolve, reject }
+//  When native delivers a token it calls window.__nativeDeliverToken(id, ...).
+// ─────────────────────────────────────────────────────────────────────────────
+var _pendingTokenCallbacks = {};
+var _nextCallbackId = 0;
+
+/**
+ * Called by native code to resolve a pending tokenProvider Promise.
+ * @param {number}      id       - matches the id sent in requestToken
+ * @param {string|null} token    - the accessToken on success
+ * @param {string|null} errorMsg - the error message on failure
+ */
+window.__nativeDeliverToken = function(id, token, errorMsg) {
+  var cb = _pendingTokenCallbacks[id];
+  if (!cb) return;
+  delete _pendingTokenCallbacks[id];
+  if (errorMsg) {
+    cb.reject(new Error(errorMsg));
+  } else {
+    cb.resolve(token);
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Platform detection & unified send-to-native helper
+// ─────────────────────────────────────────────────────────────────────────────
+var _isIOS = !!(
+  window.webkit &&
+  window.webkit.messageHandlers &&
+  window.webkit.messageHandlers.captchaSDK
+);
+
+function _sendToNative(msg) {
+  if (_isIOS) {
+    // iOS: WKScriptMessageHandler receives the JSON string
+    window.webkit.messageHandlers.captchaSDK.postMessage(JSON.stringify(msg));
+  } else if (window.AndroidBridge) {
+    // Android: @JavascriptInterface methods are called directly
+    switch (msg.type) {
+      case 'requestToken': AndroidBridge.requestToken(msg.id);       break;
+      case 'onSuccess':    AndroidBridge.onSuccess(msg.token);       break;
+      case 'onError':      AndroidBridge.onError(msg.message || ''); break;
+      case 'onClose':      AndroidBridge.onClose();                  break;
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Initialise the SDK and open the captcha modal.
+//
+//  serverUrl is empty because the HTML is already loaded with the captcha server
+//  as base URL, making all relative fetch() calls resolve to the correct origin.
+// ─────────────────────────────────────────────────────────────────────────────
+CaptchaSDK.init({
+  serverUrl: '',   // empty = same origin as base URL = captcha server
+
+  tokenProvider: function() {
+    return new Promise(function(resolve, reject) {
+      var id = ++_nextCallbackId;
+      _pendingTokenCallbacks[id] = { resolve: resolve, reject: reject };
+      _sendToNative({ type: 'requestToken', id: id });
+    });
+  },
+
+  onSuccess: function(captchaToken) {
+    _sendToNative({ type: 'onSuccess', token: captchaToken });
+  },
+
+  onError: function(err) {
+    _sendToNative({ type: 'onError', message: err.message || 'Unknown error' });
+  },
+
+  onClose: function() {
+    _sendToNative({ type: 'onClose' });
+  }
+});
+
+// Auto-open the captcha when the page finishes loading.
+CaptchaSDK.show();
+</script>
+</body>
+</html>
