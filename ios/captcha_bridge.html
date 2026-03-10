@@ -53,6 +53,11 @@ window.__nativeDeliverToken = function(id, token, errorMsg) {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+//  Token request timeout (ms): if native never delivers the token, reject.
+// ─────────────────────────────────────────────────────────────────────────────
+var TOKEN_REQUEST_TIMEOUT_MS = 30000;
+
+// ─────────────────────────────────────────────────────────────────────────────
 //  Platform detection & unified send-to-native helper
 // ─────────────────────────────────────────────────────────────────────────────
 var _isIOS = !!(
@@ -62,17 +67,21 @@ var _isIOS = !!(
 );
 
 function _sendToNative(msg) {
-  if (_isIOS) {
-    // iOS: WKScriptMessageHandler receives the JSON string
-    window.webkit.messageHandlers.captchaSDK.postMessage(JSON.stringify(msg));
-  } else if (window.AndroidBridge) {
-    // Android: @JavascriptInterface methods are called directly
-    switch (msg.type) {
-      case 'requestToken': AndroidBridge.requestToken(msg.id);       break;
-      case 'onSuccess':    AndroidBridge.onSuccess(msg.token);       break;
-      case 'onError':      AndroidBridge.onError(msg.message || ''); break;
-      case 'onClose':      AndroidBridge.onClose();                  break;
+  try {
+    if (_isIOS) {
+      // iOS: WKScriptMessageHandler receives the JSON string
+      window.webkit.messageHandlers.captchaSDK.postMessage(JSON.stringify(msg));
+    } else if (window.AndroidBridge) {
+      // Android: @JavascriptInterface methods are called directly
+      switch (msg.type) {
+        case 'requestToken': AndroidBridge.requestToken(msg.id);       break;
+        case 'onSuccess':    AndroidBridge.onSuccess(msg.token);       break;
+        case 'onError':      AndroidBridge.onError(msg.message || ''); break;
+        case 'onClose':      AndroidBridge.onClose();                  break;
+      }
     }
+  } catch (e) {
+    console.error('[captcha-bridge] _sendToNative failed:', e);
   }
 }
 
@@ -88,7 +97,19 @@ CaptchaSDK.init({
   tokenProvider: function() {
     return new Promise(function(resolve, reject) {
       var id = ++_nextCallbackId;
-      _pendingTokenCallbacks[id] = { resolve: resolve, reject: reject };
+
+      // Auto-reject if native does not deliver a token within the timeout.
+      var timer = setTimeout(function() {
+        if (_pendingTokenCallbacks[id]) {
+          delete _pendingTokenCallbacks[id];
+          reject(new Error('Token request timed out after ' + TOKEN_REQUEST_TIMEOUT_MS + 'ms'));
+        }
+      }, TOKEN_REQUEST_TIMEOUT_MS);
+
+      _pendingTokenCallbacks[id] = {
+        resolve: function(token) { clearTimeout(timer); resolve(token); },
+        reject:  function(err)   { clearTimeout(timer); reject(err);   }
+      };
       _sendToNative({ type: 'requestToken', id: id });
     });
   },

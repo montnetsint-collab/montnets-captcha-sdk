@@ -96,15 +96,23 @@ private class CaptchaViewController: UIViewController, WKScriptMessageHandler {
 
     required init?(coder: NSCoder) { fatalError("not implemented") }
 
+    // MARK: - Lifecycle
+
+    deinit {
+        // Must remove the script message handler to break the retain cycle:
+        // CaptchaViewController → WKWebView → WKUserContentController → CaptchaViewController
+        webView?.configuration.userContentController.removeScriptMessageHandler(forName: "captchaSDK")
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = UIColor.black.withAlphaComponent(0.55)
 
         // Configure WKWebView with the "captchaSDK" script message handler.
-        // All window.webkit.messageHandlers.captchaSDK.postMessage(...) calls
-        // in the bridge HTML will arrive at userContentController(_:didReceive:).
+        // Use WeakMessageHandler to avoid the retain cycle between
+        // WKUserContentController and this view controller.
         let config = WKWebViewConfiguration()
-        config.userContentController.add(self, name: "captchaSDK")
+        config.userContentController.add(WeakMessageHandler(self), name: "captchaSDK")
 
         webView = WKWebView(frame: view.bounds, configuration: config)
         webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -200,5 +208,30 @@ private class CaptchaViewController: UIViewController, WKScriptMessageHandler {
         guard !closeFired else { return }
         closeFired = true
         DispatchQueue.main.async { [weak self] in self?.onClose?() }
+    }
+}
+
+// MARK: - WeakMessageHandler
+
+/**
+ * Proxy that holds a weak reference to the real WKScriptMessageHandler delegate.
+ *
+ * WKUserContentController retains its message handlers strongly, which creates
+ * a retain cycle when the handler is a WKWebView-owning view controller:
+ *   ViewController → WKWebView → WKUserContentController → ViewController
+ *
+ * By inserting this proxy the cycle becomes:
+ *   ViewController → WKWebView → WKUserContentController → WeakMessageHandler ⇢ (weak) ViewController
+ * so the view controller can be deallocated normally.
+ */
+private class WeakMessageHandler: NSObject, WKScriptMessageHandler {
+    weak var target: WKScriptMessageHandler?
+    init(_ target: WKScriptMessageHandler) { self.target = target }
+
+    func userContentController(
+        _ userContentController: WKUserContentController,
+        didReceive message: WKScriptMessage
+    ) {
+        target?.userContentController(userContentController, didReceive: message)
     }
 }

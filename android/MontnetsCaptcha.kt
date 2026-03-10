@@ -12,6 +12,7 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
+import org.json.JSONObject
 
 /**
  * Montnets International Sliding-Puzzle Captcha — Android integration helper.
@@ -79,7 +80,11 @@ object MontnetsCaptcha {
 
         // Full-screen transparent dialog
         val dialog = Dialog(activity, android.R.style.Theme_Translucent_NoTitleBar_Fullscreen)
-        dialog.setOnDismissListener { fireClose() }
+        dialog.setOnDismissListener {
+            // Destroy the WebView to release native resources and stop JS execution.
+            webView.destroy()
+            fireClose()
+        }
 
         // Build the WebView
         val webView = WebView(activity).apply {
@@ -104,13 +109,12 @@ object MontnetsCaptcha {
                 @JavascriptInterface
                 fun requestToken(callbackId: Int) {
                     tokenProvider { token, error ->
-                        // Deliver the token (or error) back to JS
+                        // Use JSONObject.quote() for safe JS string serialization —
+                        // handles all special characters including \n, \r, \u2028, etc.
                         val js = if (error != null) {
-                            val safeErr = error.replace("\\", "\\\\").replace("'", "\\'")
-                            "__nativeDeliverToken($callbackId, null, '$safeErr')"
+                            "window.__nativeDeliverToken($callbackId, null, ${JSONObject.quote(error)})"
                         } else {
-                            val safeToken = (token ?: "").replace("\\", "\\\\").replace("'", "\\'")
-                            "__nativeDeliverToken($callbackId, '$safeToken', null)"
+                            "window.__nativeDeliverToken($callbackId, ${JSONObject.quote(token ?: "")}, null)"
                         }
                         mainHandler.post { webView.evaluateJavascript(js, null) }
                     }

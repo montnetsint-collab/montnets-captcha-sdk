@@ -30,6 +30,9 @@ class MainActivity : AppCompatActivity() {
     private val APP_ID             = "YOUR_APP_ID"
     // ─────────────────────────────────────────────────────────────────────────
 
+    // Reuse a single OkHttpClient instance across all requests
+    private val httpClient = OkHttpClient()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -95,8 +98,6 @@ class MainActivity : AppCompatActivity() {
      * appSecret securely and returns only the accessToken.
      */
     private fun getCaptchaToken(callback: (token: String?, error: String?) -> Unit) {
-        val client = OkHttpClient()
-
         val body = JSONObject().apply {
             put("appId",     APP_ID)
             put("appSecret", "YOUR_APP_SECRET")  // ← DEMO ONLY — move to your backend
@@ -109,13 +110,15 @@ class MainActivity : AppCompatActivity() {
             .post(body)
             .build()
 
-        client.newCall(request).enqueue(object : Callback {
+        httpClient.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 callback(null, e.message)
             }
             override fun onResponse(call: Call, response: Response) {
                 try {
-                    val json = JSONObject(response.body!!.string())
+                    val bodyStr = response.body?.string()
+                        ?: return callback(null, "Empty response body")
+                    val json = JSONObject(bodyStr)
                     if (json.optBoolean("success")) {
                         val token = json.getJSONObject("data").getString("accessToken")
                         callback(token, null)
