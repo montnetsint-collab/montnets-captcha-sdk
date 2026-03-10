@@ -50,4 +50,3 @@ Your App / Page
 ## Support
 
 Homepage: https://www.int-montnets.com
-Email: huangzxc@montnets.com
