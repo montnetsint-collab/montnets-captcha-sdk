@@ -502,10 +502,10 @@
         if (track) track.classList.remove('csk-disabled');
         var hintEl  = _q('csk-hint');
         var drResult = _dispatch('dragToComplete', {
-          defaultMessage: DEFAULT_MESSAGES.dragToComplete,
+          defaultMessage: _msg('dragToComplete'),
           elements: { hint: hintEl }
         });
-        if (drResult !== false) _setHint(typeof drResult === 'string' ? drResult : DEFAULT_MESSAGES.dragToComplete, '');
+        if (drResult !== false) _setHint(typeof drResult === 'string' ? drResult : _msg('dragToComplete'), '');
         _bindDrag();
       });
     };
@@ -520,10 +520,10 @@
     var hintEl  = _q('csk-hint');
     if (loading) loading.style.display = 'flex';
     var lcResult = _dispatch('loadingCaptcha', {
-      defaultMessage: DEFAULT_MESSAGES.loadingCaptcha,
+      defaultMessage: _msg('loadingCaptcha'),
       elements: { hint: hintEl, loading: loading }
     });
-    if (lcResult !== false) _setHint(typeof lcResult === 'string' ? lcResult : DEFAULT_MESSAGES.loadingCaptcha, '');
+    if (lcResult !== false) _setHint(typeof lcResult === 'string' ? lcResult : _msg('loadingCaptcha'), '');
 
     _getAccessToken().then(function (token) {
       return _fetchChallenge(token);
@@ -533,12 +533,12 @@
       _log('Failed to load challenge:', err.message);
       var loadingEl = _q('csk-loading');
       var lfResult  = _dispatch('loadFailed', {
-        defaultMessage: DEFAULT_MESSAGES.loadFailed,
+        defaultMessage: _msg('loadFailed'),
         elements: { loading: loadingEl, hint: _q('csk-hint') },
         error: err
       });
       if (lfResult !== false) {
-        var lfMsg = typeof lfResult === 'string' ? lfResult : DEFAULT_MESSAGES.loadFailed;
+        var lfMsg = typeof lfResult === 'string' ? lfResult : _msg('loadFailed');
         if (loadingEl) loadingEl.style.display = 'none';
         _setHint(lfMsg, 'csk-err');
       }
