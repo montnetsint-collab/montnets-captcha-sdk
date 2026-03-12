@@ -602,9 +602,15 @@
     var fill  = _q('csk-fill');
     var thumb = _q('csk-thumb');
     var hint  = _q('csk-hint');
-    var defaultMessage = (key === 'submissionFailed' && error && error.message)
-      ? error.message
-      : _msg(key);
+    // Message priority for _onFail:
+    //   1. config.messageResolver(key) returns a string  (handled later via _dispatch)
+    //   2. config.messages[key]        user-configured static text
+    //   3. error.message               actual error detail (submissionFailed only)
+    //   4. built-in English default
+    var hasUserMsg = _config && _config.messages && _config.messages[key];
+    var defaultMessage = hasUserMsg
+      ? _msg(key)
+      : (key === 'submissionFailed' && error && error.message ? error.message : _msg(key));
     var result = _dispatch(key, {
       defaultMessage: defaultMessage,
       elements: { fill: fill, thumb: thumb, hint: hint },
