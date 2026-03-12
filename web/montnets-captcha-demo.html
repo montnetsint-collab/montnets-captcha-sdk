@@ -584,15 +584,36 @@
       },
 
       // -----------------------------------------------------------------------
+      // messages  (optional)
+      // -----------------------------------------------------------------------
+      // The simplest way to override display text — a plain key/value map.
+      // Only the keys you specify are replaced; the rest fall back to the
+      // built-in English defaults.
+      //
+      // Available keys (see also CaptchaSDK.defaultMessages for full list):
+      //   loadingCaptcha | dragToComplete | loadFailed |
+      //   verificationFailed | submissionFailed | verificationPassed
+      //
+      // Example:
+      //   messages: {
+      //     verificationFailed: 'Incorrect position, please try again',
+      //     submissionFailed:   'Captcha expired, please refresh',
+      //     verificationPassed: 'Verified!'
+      //   },
+
+      // -----------------------------------------------------------------------
       // messageResolver  (optional)
       // -----------------------------------------------------------------------
-      // A callback invoked for every UI state change, giving you full control
-      // over what is displayed — including direct access to the live DOM nodes.
+      // Use this instead of (or alongside) messages when you need full control:
+      // dynamic text, access to live DOM nodes, or suppressing default styling.
+      //
+      // Priority: messageResolver (string result) → messages[key] → built-in default.
       //
       // Signature: (key: string, ctx: object) => string | false | undefined
       //
       // ctx properties:
-      //   ctx.defaultMessage  {string}      Built-in English default text.
+      //   ctx.defaultMessage  {string}      Resolved default text for this key
+      //                                     (respects messages[key] if set).
       //   ctx.elements        {object}      Live DOM nodes — mutate directly.
       //     .hint             {HTMLElement} Status bar below the slider.
       //     .fill             {HTMLElement} Coloured slider fill strip.
@@ -605,10 +626,6 @@
       //   string    → SDK keeps default CSS, replaces text with your string.
       //   false     → Skip all SDK default rendering; use ctx.elements yourself.
       //   undefined → SDK uses defaultMessage as-is (default behaviour).
-      //
-      // Available keys (see also CaptchaSDK.defaultMessages for full list):
-      //   loadingCaptcha | dragToComplete | loadFailed |
-      //   verificationFailed | submissionFailed | verificationPassed
       //
       // Example 1 — simple text override (e.g. localisation):
       //   messageResolver: function(key, ctx) {
@@ -623,9 +640,9 @@
       // Example 2 — fully custom rendering on failure:
       //   messageResolver: function(key, ctx) {
       //     if (key === 'submissionFailed') {
-      //       ctx.elements.hint.style.color   = 'orange';
-      //       ctx.elements.hint.textContent   = ctx.error ? ctx.error.message : 'Try again';
-      //       ctx.elements.thumb.textContent  = '!';
+      //       ctx.elements.hint.style.color      = 'orange';
+      //       ctx.elements.hint.textContent      = ctx.error ? ctx.error.message : 'Try again';
+      //       ctx.elements.thumb.textContent     = '!';
       //       ctx.elements.fill.style.background = 'orange';
       //       return false; // skip SDK's default CSS updates
       //     }
