@@ -97,6 +97,51 @@
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
+  //  UI messages (defaults; override via config.messages)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  var DEFAULT_MESSAGES = {
+    loadingCaptcha:     'Loading captcha…',
+    dragToComplete:     'Drag the slider to complete the puzzle',
+    loadFailed:         'Failed to load, please refresh and try again',
+    verificationFailed: 'Verification failed, please try again',
+    submissionFailed:   'Submission failed, please try again',
+    verificationPassed: 'Verification passed'
+  };
+
+  /**
+   * Simple string lookup — used only where no DOM elements exist yet (e.g. HTML template).
+   * Priority: messageResolver (string result) → messages object → built-in default.
+   */
+  function _msg(key) {
+    if (_config && typeof _config.messageResolver === 'function') {
+      var r = _config.messageResolver(key, { defaultMessage: DEFAULT_MESSAGES[key] });
+      if (typeof r === 'string') return r;
+    }
+    return (_config && _config.messages && _config.messages[key]) || DEFAULT_MESSAGES[key] || key;
+  }
+
+  /**
+   * Dispatches a UI-state event to the user's messageResolver callback.
+   *
+   * ctx shape:
+   *   { defaultMessage: string, elements: { hint?, fill?, thumb?, loading? }, error?, captchaToken? }
+   *
+   * Return value from messageResolver:
+   *   string  — use this text instead of defaultMessage (SDK still applies default CSS/classes)
+   *   false   — user handled everything; SDK skips all default visual updates for this event
+   *   other   — SDK uses defaultMessage as-is
+   *
+   * @returns the raw return value from messageResolver, or undefined if not configured.
+   */
+  function _dispatch(key, ctx) {
+    if (_config && typeof _config.messageResolver === 'function') {
+      return _config.messageResolver(key, ctx);
+    }
+    return undefined;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
   //  AccessToken cache (sessionStorage)
   // ═══════════════════════════════════════════════════════════════════════════
 
@@ -233,12 +278,6 @@
     /* Loading overlay. */
     '.csk-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.88);font-size:13px;color:#666}',
     '.csk-spinner{width:18px;height:18px;border:2px solid #e5e7eb;border-top-color:#4361ee;border-radius:50%;animation:cskSpin .7s linear infinite;margin-right:8px}',
-    /* Success / fail overlays. */
-    '.csk-img-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;font-size:13px;font-weight:500;opacity:0;transition:opacity .25s;pointer-events:none}',
-    '.csk-img-overlay.csk-visible{opacity:1;pointer-events:auto}',
-    '.csk-overlay-ok{background:rgba(82,196,26,.13);color:#389e0d}',
-    '.csk-overlay-fail{background:rgba(255,77,79,.09);color:#cf1322}',
-    '.csk-overlay-icon{font-size:30px;margin-bottom:4px}',
     /* Refresh button on image. */
     '.csk-btn-refresh{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;background:rgba(0,0,0,.35);border:none;cursor:pointer;color:#fff;font-size:15px;display:flex;align-items:center;justify-content:center;transition:background .2s,transform .35s;z-index:10}',
     '.csk-btn-refresh:hover{background:rgba(0,0,0,.55)}',
@@ -278,24 +317,18 @@
     wrap.innerHTML = [
       '<div class="csk-modal">',
       '  <div class="csk-header">',
-      '    <span class="csk-title">安全验证</span>',
+      '    <span class="csk-title">Security Verification</span>',
       '    <button class="csk-close" id="csk-close">×</button>',
       '  </div>',
       '  <div class="csk-body">',
       '    <div class="csk-img-wrap" id="csk-img-wrap">',
       '      <img class="csk-bg-img"    id="csk-bg-img"    alt="">',
       '      <img class="csk-slice-img" id="csk-slice-img" alt="">',
-      '      <div class="csk-loading" id="csk-loading"><div class="csk-spinner"></div>加载中…</div>',
-      '      <div class="csk-img-overlay csk-overlay-ok"   id="csk-ol-ok">',
-      '        <div class="csk-overlay-icon">✓</div><div>验证通过</div>',
-      '      </div>',
-      '      <div class="csk-img-overlay csk-overlay-fail" id="csk-ol-fail">',
-      '        <div class="csk-overlay-icon">✗</div><div id="csk-fail-msg">验证失败，请重试</div>',
-      '      </div>',
-      '      <button class="csk-btn-refresh" id="csk-refresh" title="换一张">↺</button>',
+      '      <div class="csk-loading" id="csk-loading"><div class="csk-spinner"></div></div>',
+      '      <button class="csk-btn-refresh" id="csk-refresh" title="Refresh">↺</button>',
       '    </div>',
       '    <div class="csk-bar">',
-      '      <div class="csk-hint" id="csk-hint">正在加载验证码…</div>',
+      '      <div class="csk-hint" id="csk-hint">' + _msg('loadingCaptcha') + '</div>',
       '      <div class="csk-track csk-disabled" id="csk-track">',
       '        <div class="csk-fill" id="csk-fill" style="width:32px">',
       '          <div class="csk-thumb" id="csk-thumb">→</div>',
@@ -430,13 +463,10 @@
     var bgImg   = _q('csk-bg-img');
     var slice   = _q('csk-slice-img');
     var loading = _q('csk-loading');
-    var olOk    = _q('csk-ol-ok');
-    var olFail  = _q('csk-ol-fail');
-    var track   = _q('csk-track');
 
-    if (olOk)   olOk.classList.remove('csk-visible');
-    if (olFail) olFail.classList.remove('csk-visible');
-    if (track)  track.classList.add('csk-disabled');
+    var track = _q('csk-track');
+
+    if (track) track.classList.add('csk-disabled');
 
     bgImg.onload = function () {
       _bgNatW = bgImg.naturalWidth;
@@ -454,7 +484,12 @@
         slice.style.height = pxSize + 'px';
 
         if (track) track.classList.remove('csk-disabled');
-        _setHint('拖动滑块完成拼图', '');
+        var hintEl  = _q('csk-hint');
+        var drResult = _dispatch('dragToComplete', {
+          defaultMessage: DEFAULT_MESSAGES.dragToComplete,
+          elements: { hint: hintEl }
+        });
+        if (drResult !== false) _setHint(typeof drResult === 'string' ? drResult : DEFAULT_MESSAGES.dragToComplete, '');
         _bindDrag();
       });
     };
@@ -466,8 +501,13 @@
   function _loadChallenge() {
     _unbindDrag();
     var loading = _q('csk-loading');
+    var hintEl  = _q('csk-hint');
     if (loading) loading.style.display = 'flex';
-    _setHint('正在加载验证码…', '');
+    var lcResult = _dispatch('loadingCaptcha', {
+      defaultMessage: DEFAULT_MESSAGES.loadingCaptcha,
+      elements: { hint: hintEl, loading: loading }
+    });
+    if (lcResult !== false) _setHint(typeof lcResult === 'string' ? lcResult : DEFAULT_MESSAGES.loadingCaptcha, '');
 
     _getAccessToken().then(function (token) {
       return _fetchChallenge(token);
@@ -475,8 +515,17 @@
       _renderChallenge(data);
     }).catch(function (err) {
       _log('Failed to load challenge:', err.message);
-      var loading = _q('csk-loading');
-      if (loading) loading.innerHTML = '<span style="color:#dc2626">加载失败，请刷新重试</span>';
+      var loadingEl = _q('csk-loading');
+      var lfResult  = _dispatch('loadFailed', {
+        defaultMessage: DEFAULT_MESSAGES.loadFailed,
+        elements: { loading: loadingEl, hint: _q('csk-hint') },
+        error: err
+      });
+      if (lfResult !== false) {
+        var lfMsg = typeof lfResult === 'string' ? lfResult : DEFAULT_MESSAGES.loadFailed;
+        if (loadingEl) loadingEl.style.display = 'none';
+        _setHint(lfMsg, 'csk-err');
+      }
       // Clear token cache if it's an auth error (server returns 401).
       if (err.code === 401) _clearTokenCache();
       if (typeof _config.onError === 'function') _config.onError(err);
@@ -485,11 +534,7 @@
 
   function _refresh() {
     _challenge = null;
-    var olOk   = _q('csk-ol-ok');
-    var olFail = _q('csk-ol-fail');
-    var rb     = _q('csk-refresh');
-    if (olOk)   olOk.classList.remove('csk-visible');
-    if (olFail) olFail.classList.remove('csk-visible');
+    var rb = _q('csk-refresh');
     if (rb)     { rb.classList.add('csk-spinning'); setTimeout(function () { rb.classList.remove('csk-spinning'); }, 400); }
     _loadChallenge();
   }
@@ -506,23 +551,30 @@
       if (data.passed) {
         _onPass(data.captchaToken);
       } else {
-        _onFail('验证未通过，请重试');
+        _onFail('verificationFailed', null);
       }
     }).catch(function (err) {
       _log('Submit failed:', err.message);
       if (err.code === 401) _clearTokenCache();
-      _onFail(err.message || '提交失败，请重试');
+      _onFail('submissionFailed', err);
     });
   }
 
   function _onPass(captchaToken) {
     var fill  = _q('csk-fill');
     var thumb = _q('csk-thumb');
-    var olOk  = _q('csk-ol-ok');
-    if (fill)  fill.className        = 'csk-fill csk-ok';
-    if (thumb) { thumb.textContent = '✓'; thumb.style.color = '#52c41a'; }
-    if (olOk)  olOk.classList.add('csk-visible');
-    _setHint('验证通过', 'csk-ok');
+    var hint  = _q('csk-hint');
+    var result = _dispatch('verificationPassed', {
+      defaultMessage: DEFAULT_MESSAGES.verificationPassed,
+      elements: { fill: fill, thumb: thumb, hint: hint },
+      captchaToken: captchaToken
+    });
+    if (result !== false) {
+      var msg = typeof result === 'string' ? result : DEFAULT_MESSAGES.verificationPassed;
+      if (fill)  fill.className = 'csk-fill csk-ok';
+      if (thumb) { thumb.textContent = '✓'; thumb.style.color = '#52c41a'; }
+      _setHint(msg, 'csk-ok');
+    }
     _log('Verification passed. captchaToken:', captchaToken);
     setTimeout(function () {
       _close();
@@ -530,16 +582,24 @@
     }, 800);
   }
 
-  function _onFail(msg) {
-    var fill    = _q('csk-fill');
-    var thumb   = _q('csk-thumb');
-    var olFail  = _q('csk-ol-fail');
-    var failMsg = _q('csk-fail-msg');
-    if (fill)    fill.className          = 'csk-fill csk-err';
-    if (thumb)   { thumb.textContent = '✗'; thumb.style.color = '#ff4d4f'; }
-    if (failMsg) failMsg.textContent     = msg;
-    if (olFail)  olFail.classList.add('csk-visible');
-    _setHint(msg, 'csk-err');
+  function _onFail(key, error) {
+    var fill  = _q('csk-fill');
+    var thumb = _q('csk-thumb');
+    var hint  = _q('csk-hint');
+    var defaultMessage = (key === 'submissionFailed' && error && error.message)
+      ? error.message
+      : DEFAULT_MESSAGES[key] || key;
+    var result = _dispatch(key, {
+      defaultMessage: defaultMessage,
+      elements: { fill: fill, thumb: thumb, hint: hint },
+      error: error || null
+    });
+    if (result !== false) {
+      var msg = typeof result === 'string' ? result : defaultMessage;
+      if (fill)  fill.className = 'csk-fill csk-err';
+      if (thumb) { thumb.textContent = '✗'; thumb.style.color = '#ff4d4f'; }
+      _setHint(msg, 'csk-err');
+    }
     setTimeout(function () { _refresh(); }, 2000);
   }
 
@@ -610,6 +670,59 @@
      * @param {Function} [config.onClose]
      *   Called whenever the modal is closed (user cancel or after success).
      *
+     * @param {Function} [config.messageResolver]
+     *   Callback invoked for every UI state change, giving full control over what is displayed.
+     *   Signature: (key: string, ctx: object) => string | false | undefined
+     *
+     *   ctx properties (varies by key):
+     *     ctx.defaultMessage  {string}      Built-in default text for this event.
+     *     ctx.elements        {object}      Live DOM nodes — mutate them directly if needed.
+     *       .hint             {HTMLElement} The status bar below the slider.
+     *       .fill             {HTMLElement} The coloured slider fill strip.
+     *       .thumb            {HTMLElement} The draggable thumb button.
+     *       .loading          {HTMLElement} The loading overlay on the image (loadingCaptcha / loadFailed).
+     *     ctx.error           {Error|null}  The Error object (submissionFailed / loadFailed only).
+     *     ctx.captchaToken    {string}      The issued token (verificationPassed only).
+     *
+     *   Return values:
+     *     string  — SDK applies default CSS state but uses this text instead of defaultMessage.
+     *     false   — Skip all SDK default visual updates; you have full control via ctx.elements.
+     *     other   — SDK uses defaultMessage as-is.
+     *
+     *   Keys: loading | loadingCaptcha | dragToComplete | loadFailed |
+     *         verificationFailed | submissionFailed | verificationPassed
+     *
+     *   Example — translate messages and hide the success overlay:
+     *     messageResolver: function(key, ctx) {
+     *       var map = {
+     *         dragToComplete:     '拖动滑块完成拼图',
+     *         verificationFailed: '验证未通过，请重试',
+     *         verificationPassed: '验证通过'
+     *       };
+     *       return map[key]; // undefined for unmapped keys → SDK uses defaultMessage
+     *     }
+     *
+     *   Example — fully custom rendering on failure:
+     *     messageResolver: function(key, ctx) {
+     *       if (key === 'verificationFailed' || key === 'submissionFailed') {
+     *         ctx.elements.hint.style.color = 'orange';
+     *         ctx.elements.hint.textContent = ctx.error ? ctx.error.message : 'Try again';
+     *         return false; // skip SDK's default CSS updates
+     *       }
+     *     }
+     *
+     * @param {Object}   [config.messages]
+     *   Override any subset of the built-in UI strings. Unspecified keys fall back to defaults.
+     *   Available keys and their defaults:
+     *     loadingCaptcha     – 'Loading captcha…'
+     *     dragToComplete     – 'Drag the slider to complete the puzzle'
+     *     loadFailed         – 'Failed to load, please refresh and try again'
+     *     verificationFailed – 'Verification failed, please try again'
+     *     submissionFailed   – 'Submission failed, please try again'
+     *     verificationPassed – 'Verification passed'
+     *   Example:
+     *     messages: { verificationFailed: '验证未通过，请重试', verificationPassed: '验证通过' }
+     *
      * @param {boolean}  [config.debug=false]
      *   Enables verbose [CaptchaSDK] console logging.
      */
@@ -642,6 +755,13 @@
      * @returns {Promise<string>} Resolves with the cached accessToken.
      */
     warmup: function () { return _getAccessToken(); },
+
+    /**
+     * All built-in UI message keys and their default values.
+     * Use this as a reference when configuring config.messages, or as a base to extend:
+     *   messages: Object.assign({}, CaptchaSDK.defaultMessages, { verificationFailed: '...' })
+     */
+    defaultMessages: DEFAULT_MESSAGES,
 
     version: '2.0.0'
   };

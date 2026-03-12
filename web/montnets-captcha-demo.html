@@ -401,6 +401,10 @@
       2. Call <code>CaptchaSDK.init()</code> once on page load, providing a
          <code>tokenProvider</code> and an <code>onSuccess</code> callback.<br>
       3. Call <code>CaptchaSDK.show()</code> from your submit button.<br><br>
+      <strong>Customise UI text:</strong> pass a <code>messageResolver</code>
+      function or a <code>messages</code> object to <code>init()</code>.
+      Use <code>CaptchaSDK.defaultMessages</code> to inspect all available keys
+      and their default values.<br><br>
       See <a href="https://www.int-montnets.com" target="_blank">
       www.int-montnets.com</a> for full API documentation.
     </div>
@@ -578,6 +582,54 @@
           setButtonState('ready', 'Sign In');
         }
       },
+
+      // -----------------------------------------------------------------------
+      // messageResolver  (optional)
+      // -----------------------------------------------------------------------
+      // A callback invoked for every UI state change, giving you full control
+      // over what is displayed — including direct access to the live DOM nodes.
+      //
+      // Signature: (key: string, ctx: object) => string | false | undefined
+      //
+      // ctx properties:
+      //   ctx.defaultMessage  {string}      Built-in English default text.
+      //   ctx.elements        {object}      Live DOM nodes — mutate directly.
+      //     .hint             {HTMLElement} Status bar below the slider.
+      //     .fill             {HTMLElement} Coloured slider fill strip.
+      //     .thumb            {HTMLElement} Draggable thumb button.
+      //     .loading          {HTMLElement} Loading overlay on the image.
+      //   ctx.error           {Error|null}  Error object (failure events only).
+      //   ctx.captchaToken    {string}      Issued token (verificationPassed only).
+      //
+      // Return values:
+      //   string    → SDK keeps default CSS, replaces text with your string.
+      //   false     → Skip all SDK default rendering; use ctx.elements yourself.
+      //   undefined → SDK uses defaultMessage as-is (default behaviour).
+      //
+      // Available keys (see also CaptchaSDK.defaultMessages for full list):
+      //   loadingCaptcha | dragToComplete | loadFailed |
+      //   verificationFailed | submissionFailed | verificationPassed
+      //
+      // Example 1 — simple text override (e.g. localisation):
+      //   messageResolver: function(key, ctx) {
+      //     var map = {
+      //       dragToComplete:     'Slide to complete the puzzle',
+      //       verificationFailed: 'Incorrect — please try again',
+      //       verificationPassed: 'Verified!'
+      //     };
+      //     return map[key]; // undefined for unmapped keys → SDK default
+      //   },
+      //
+      // Example 2 — fully custom rendering on failure:
+      //   messageResolver: function(key, ctx) {
+      //     if (key === 'submissionFailed') {
+      //       ctx.elements.hint.style.color   = 'orange';
+      //       ctx.elements.hint.textContent   = ctx.error ? ctx.error.message : 'Try again';
+      //       ctx.elements.thumb.textContent  = '!';
+      //       ctx.elements.fill.style.background = 'orange';
+      //       return false; // skip SDK's default CSS updates
+      //     }
+      //   },
 
       // debug: true   // Uncomment to enable verbose console logging during development.
     });
