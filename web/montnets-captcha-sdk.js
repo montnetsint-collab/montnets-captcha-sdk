@@ -110,8 +110,19 @@
   };
 
   /**
-   * Simple string lookup — used only where no DOM elements exist yet (e.g. HTML template).
-   * Priority: messageResolver (string result) → messages object → built-in default.
+   * Resolves the display text for a given message key.
+   *
+   * Priority (highest → lowest):
+   *   1. config.messageResolver(key, ctx) — returns a string
+   *      Full control: receives the key and a ctx object, can return any string.
+   *      If it returns a non-string (or nothing), falls through to the next level.
+   *   2. config.messages[key]
+   *      Simple key→value map. Ideal for plain text overrides without writing a function.
+   *      e.g. messages: { verificationFailed: '验证码错误，请重新验证' }
+   *   3. Built-in English default (DEFAULT_MESSAGES[key])
+   *
+   * Used only for static text (e.g. HTML template rendering).
+   * For live UI-state events with DOM element access, see _dispatch().
    */
   function _msg(key) {
     if (_config && typeof _config.messageResolver === 'function') {
@@ -122,7 +133,12 @@
   }
 
   /**
-   * Dispatches a UI-state event to the user's messageResolver callback.
+   * Dispatches a UI-state event to config.messageResolver (if configured).
+   *
+   * Used for live events where DOM elements are already rendered (verificationPassed,
+   * verificationFailed, submissionFailed, loadFailed). The caller uses _msg() as the
+   * fallback message when _dispatch() returns undefined (i.e. no messageResolver set),
+   * so config.messages overrides still apply in that path.
    *
    * ctx shape:
    *   { defaultMessage: string, elements: { hint?, fill?, thumb?, loading? }, error?, captchaToken? }
@@ -130,7 +146,7 @@
    * Return value from messageResolver:
    *   string  — use this text instead of defaultMessage (SDK still applies default CSS/classes)
    *   false   — user handled everything; SDK skips all default visual updates for this event
-   *   other   — SDK uses defaultMessage as-is
+   *   other   — SDK uses defaultMessage as-is (which was already resolved via _msg())
    *
    * @returns the raw return value from messageResolver, or undefined if not configured.
    */
@@ -565,12 +581,12 @@
     var thumb = _q('csk-thumb');
     var hint  = _q('csk-hint');
     var result = _dispatch('verificationPassed', {
-      defaultMessage: DEFAULT_MESSAGES.verificationPassed,
+      defaultMessage: _msg('verificationPassed'),
       elements: { fill: fill, thumb: thumb, hint: hint },
       captchaToken: captchaToken
     });
     if (result !== false) {
-      var msg = typeof result === 'string' ? result : DEFAULT_MESSAGES.verificationPassed;
+      var msg = typeof result === 'string' ? result : _msg('verificationPassed');
       if (fill)  fill.className = 'csk-fill csk-ok';
       if (thumb) { thumb.textContent = '✓'; thumb.style.color = '#52c41a'; }
       _setHint(msg, 'csk-ok');
@@ -588,7 +604,7 @@
     var hint  = _q('csk-hint');
     var defaultMessage = (key === 'submissionFailed' && error && error.message)
       ? error.message
-      : DEFAULT_MESSAGES[key] || key;
+      : _msg(key);
     var result = _dispatch(key, {
       defaultMessage: defaultMessage,
       elements: { fill: fill, thumb: thumb, hint: hint },
