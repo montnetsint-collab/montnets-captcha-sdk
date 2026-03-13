@@ -1,0 +1,1370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Montnets Captcha — Developer Documentation</title>
+  <style>
+    /* ── Reset & Variables ──────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --sidebar-w: 260px;
+      --nav-h: 56px;
+      --blue:   #4361ee;
+      --blue-d: #3451d1;
+      --green:  #10b981;
+      --red:    #ef4444;
+      --yellow: #f59e0b;
+      --gray-50:  #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-800: #1f2937;
+      --gray-900: #111827;
+      --sidebar-bg: #1a1f2e;
+      --sidebar-text: #cbd5e1;
+      --sidebar-hover: rgba(255,255,255,.06);
+      --sidebar-active: rgba(67,97,238,.25);
+      --code-bg: #1e2535;
+      --code-border: #2d3748;
+    }
+
+    html { scroll-behavior: smooth; font-size: 15px; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', 'Helvetica Neue', Arial, sans-serif;
+      color: var(--gray-800);
+      background: #fff;
+      line-height: 1.7;
+    }
+
+    /* ── Top nav ────────────────────────────────────────────────────────────── */
+    .topnav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: var(--nav-h);
+      background: var(--sidebar-bg);
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      z-index: 200;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .topnav-brand {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: .3px;
+    }
+    .topnav-brand span { color: var(--blue); }
+    .topnav-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .topnav-right a {
+      font-size: 13px;
+      color: var(--sidebar-text);
+      text-decoration: none;
+      transition: color .15s;
+    }
+    .topnav-right a:hover { color: #fff; }
+    .btn-github {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 6px;
+      padding: 5px 12px;
+      font-size: 12px;
+      color: #e2e8f0 !important;
+      font-weight: 500;
+    }
+    .btn-github:hover { background: rgba(255,255,255,.14) !important; color: #fff !important; }
+    .topnav-tag {
+      font-size: 11px;
+      background: rgba(67,97,238,.3);
+      color: #93c5fd;
+      border-radius: 4px;
+      padding: 2px 7px;
+      font-weight: 600;
+    }
+
+    /* ── Sidebar ────────────────────────────────────────────────────────────── */
+    .sidebar {
+      position: fixed;
+      top: var(--nav-h);
+      left: 0;
+      width: var(--sidebar-w);
+      height: calc(100vh - var(--nav-h));
+      overflow-y: auto;
+      background: var(--sidebar-bg);
+      padding: 20px 0 40px;
+      z-index: 100;
+    }
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 4px; }
+
+    .sidebar-group { margin-bottom: 8px; }
+    .sidebar-group-title {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #64748b;
+      padding: 10px 20px 4px;
+    }
+    .sidebar a {
+      display: block;
+      font-size: 13px;
+      color: var(--sidebar-text);
+      text-decoration: none;
+      padding: 6px 20px;
+      border-left: 2px solid transparent;
+      transition: all .15s;
+    }
+    .sidebar a:hover { background: var(--sidebar-hover); color: #e2e8f0; }
+    .sidebar a.active { background: var(--sidebar-active); color: #93c5fd; border-left-color: var(--blue); font-weight: 500; }
+    .sidebar-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 3px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .badge-post  { background: rgba(16,185,129,.2); color: #6ee7b7; }
+    .badge-get   { background: rgba(59,130,246,.2);  color: #93c5fd; }
+    .badge-ss    { background: rgba(245,158,11,.2);  color: #fcd34d; }
+
+    /* ── Main content ───────────────────────────────────────────────────────── */
+    .main {
+      margin-left: var(--sidebar-w);
+      margin-top: var(--nav-h);
+      min-height: calc(100vh - var(--nav-h));
+    }
+    .content {
+      max-width: 860px;
+      padding: 56px 60px 80px;
+    }
+
+    /* ── Typography ─────────────────────────────────────────────────────────── */
+    h1 { font-size: 32px; font-weight: 800; color: var(--gray-900); margin-bottom: 12px; line-height: 1.25; }
+    h2 {
+      font-size: 22px; font-weight: 700; color: var(--gray-900);
+      margin-top: 56px; margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--gray-200);
+    }
+    h3 { font-size: 16px; font-weight: 700; color: var(--gray-800); margin-top: 28px; margin-bottom: 10px; }
+    h4 { font-size: 14px; font-weight: 600; color: var(--gray-700); margin-top: 20px; margin-bottom: 8px; }
+    p { margin-bottom: 14px; color: var(--gray-700); }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    ul, ol { margin: 10px 0 14px 20px; color: var(--gray-700); }
+    li { margin-bottom: 4px; }
+    strong { color: var(--gray-900); font-weight: 600; }
+
+    /* ── Inline code ────────────────────────────────────────────────────────── */
+    code {
+      font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+      font-size: .875em;
+      background: #eef2ff;
+      color: #3730a3;
+      border-radius: 4px;
+      padding: 1px 5px;
+    }
+
+    /* ── Code blocks ────────────────────────────────────────────────────────── */
+    .code-block {
+      background: var(--code-bg);
+      border: 1px solid var(--code-border);
+      border-radius: 8px;
+      margin: 14px 0;
+      overflow: hidden;
+    }
+    .code-block-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 16px;
+      background: rgba(255,255,255,.03);
+      border-bottom: 1px solid var(--code-border);
+      font-size: 12px;
+      color: #64748b;
+      font-family: monospace;
+    }
+    .code-block pre {
+      padding: 16px;
+      overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.65;
+      color: #e2e8f0;
+      font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+    }
+    .code-block pre .c  { color: #6a7f9e; }   /* comment */
+    .code-block pre .k  { color: #7dd3fc; }   /* keyword */
+    .code-block pre .s  { color: #86efac; }   /* string */
+    .code-block pre .n  { color: #fcd34d; }   /* number */
+    .code-block pre .p  { color: #e2e8f0; }   /* punctuation */
+    .code-block pre .fn { color: #a78bfa; }   /* function */
+
+    /* ── Tables ─────────────────────────────────────────────────────────────── */
+    .table-wrap { overflow-x: auto; margin: 14px 0; border-radius: 8px; border: 1px solid var(--gray-200); }
+    table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    th {
+      background: var(--gray-50);
+      font-weight: 600;
+      color: var(--gray-700);
+      padding: 9px 14px;
+      text-align: left;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      border-bottom: 1px solid var(--gray-200);
+    }
+    td {
+      padding: 9px 14px;
+      color: var(--gray-700);
+      border-bottom: 1px solid var(--gray-100);
+      vertical-align: top;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--gray-50); }
+    td code { font-size: 12px; }
+    .required { color: var(--red); font-weight: 600; font-size: 12px; }
+    .optional { color: var(--gray-400); font-size: 12px; }
+
+    /* ── Method badges ──────────────────────────────────────────────────────── */
+    .method {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .method-badge {
+      font-size: 12px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 5px;
+      font-family: monospace;
+      letter-spacing: .5px;
+    }
+    .method-badge.GET  { background: #dbeafe; color: #1d4ed8; }
+    .method-badge.POST { background: #d1fae5; color: #065f46; }
+    .endpoint-path {
+      font-family: monospace;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--gray-900);
+    }
+
+    /* ── API section divider ─────────────────────────────────────────────────── */
+    .api-section {
+      border: 1px solid var(--gray-200);
+      border-radius: 10px;
+      padding: 24px 28px;
+      margin: 24px 0;
+    }
+    .api-section-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--gray-900);
+      margin-bottom: 6px;
+    }
+    .api-section-desc {
+      font-size: 14px;
+      color: var(--gray-500);
+      margin-bottom: 20px;
+    }
+
+    /* ── Callout / Alert boxes ──────────────────────────────────────────────── */
+    .callout {
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 16px 0;
+      font-size: 14px;
+      line-height: 1.6;
+      display: flex;
+      gap: 12px;
+    }
+    .callout-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+    .callout.info    { background: #eff6ff; border-left: 3px solid #3b82f6; color: #1e40af; }
+    .callout.warning { background: #fffbeb; border-left: 3px solid #f59e0b; color: #92400e; }
+    .callout.danger  { background: #fef2f2; border-left: 3px solid #ef4444; color: #991b1b; }
+    .callout.success { background: #f0fdf4; border-left: 3px solid #22c55e; color: #166534; }
+
+    /* ── Flow diagram ───────────────────────────────────────────────────────── */
+    .flow {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin: 24px 0;
+      font-size: 13.5px;
+    }
+    .flow-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      position: relative;
+    }
+    .flow-step:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      left: 19px;
+      top: 38px;
+      width: 2px;
+      height: calc(100% - 18px);
+      background: var(--gray-200);
+    }
+    .flow-num {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: var(--blue);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .flow-body {
+      padding: 6px 0 24px;
+    }
+    .flow-title { font-weight: 600; color: var(--gray-900); margin-bottom: 4px; font-size: 14px; }
+    .flow-desc  { color: var(--gray-600); line-height: 1.5; }
+
+    /* ── Status codes ───────────────────────────────────────────────────────── */
+    .status { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 4px; }
+    .status-200 { background: #d1fae5; color: #065f46; }
+    .status-400 { background: #fef3c7; color: #92400e; }
+    .status-401 { background: #fee2e2; color: #991b1b; }
+    .status-500 { background: #f3e8ff; color: #6b21a8; }
+    .status-503 { background: #e0f2fe; color: #075985; }
+
+    /* ── Token state ────────────────────────────────────────────────────────── */
+    .tstate { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
+    .tstate-ok   { background: #d1fae5; color: #065f46; }
+    .tstate-warn { background: #fef3c7; color: #92400e; }
+    .tstate-err  { background: #fee2e2; color: #991b1b; }
+
+    /* ── Platform tabs ──────────────────────────────────────────────────────── */
+    .tabs { display: flex; gap: 0; margin-bottom: -1px; }
+    .tab-btn {
+      padding: 8px 20px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid var(--gray-200);
+      background: var(--gray-50);
+      color: var(--gray-500);
+      border-radius: 6px 6px 0 0;
+      border-bottom: none;
+      margin-right: 4px;
+      transition: all .15s;
+    }
+    .tab-btn.active { background: #fff; color: var(--blue); border-color: var(--gray-200); font-weight: 600; }
+    .tab-panel { display: none; border: 1px solid var(--gray-200); border-radius: 0 6px 6px 6px; }
+    .tab-panel.active { display: block; }
+
+    /* ── Intro hero ─────────────────────────────────────────────────────────── */
+    .hero {
+      background: linear-gradient(135deg, #1e2744 0%, #0f172a 100%);
+      padding: 48px 60px 40px;
+      margin-bottom: 0;
+    }
+    .hero h1 { color: #fff; font-size: 30px; margin-bottom: 10px; }
+    .hero p   { color: #94a3b8; font-size: 15px; margin-bottom: 0; max-width: 580px; }
+    .hero-meta { display: flex; gap: 24px; margin-top: 20px; }
+    .hero-meta-item { font-size: 12px; color: #64748b; }
+    .hero-meta-item strong { color: #94a3b8; display: block; font-size: 13px; margin-bottom: 2px; }
+
+    /* ── Quick info cards ───────────────────────────────────────────────────── */
+    .info-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin: 24px 0;
+    }
+    .info-card {
+      border: 1px solid var(--gray-200);
+      border-radius: 8px;
+      padding: 16px 18px;
+    }
+    .info-card-label { font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--gray-400); font-weight: 600; margin-bottom: 6px; }
+    .info-card-value { font-size: 15px; font-weight: 600; color: var(--gray-900); }
+    .info-card-sub   { font-size: 12px; color: var(--gray-500); margin-top: 3px; }
+
+    /* ── Breadcrumb ─────────────────────────────────────────────────────────── */
+    .breadcrumb { font-size: 12px; color: var(--gray-400); margin-bottom: 20px; }
+    .breadcrumb span { margin: 0 6px; }
+
+    /* ── Section anchor ─────────────────────────────────────────────────────── */
+    .anchor-link { color: var(--gray-300); margin-left: 8px; font-size: .8em; opacity: 0; transition: opacity .15s; text-decoration: none; }
+    h2:hover .anchor-link, h3:hover .anchor-link { opacity: 1; }
+
+    /* ── TTL badges ─────────────────────────────────────────────────────────── */
+    .ttl { font-size: 12px; font-weight: 600; background: #f0fdf4; color: #166534; border-radius: 4px; padding: 1px 7px; white-space: nowrap; }
+
+    /* ── Scrollable sidebar highlight ──────────────────────────────────────── */
+    section { scroll-margin-top: calc(var(--nav-h) + 20px); }
+
+    /* ── Responsive ─────────────────────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; }
+      .content { padding: 32px 24px 60px; }
+      .hero { padding: 32px 24px 28px; }
+      .info-cards { grid-template-columns: 1fr 1fr; }
+    }
+
+    /* ── Print ───────────────────────────────────────────────────────────────── */
+    @media print {
+      .sidebar, .topnav { display: none; }
+      .main { margin: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Top Navigation ──────────────────────────────────────────────────────── -->
+<nav class="topnav">
+  <div class="topnav-brand">Montnets <span>Captcha</span></div>
+  <div class="topnav-right">
+    <span class="topnav-tag">v1.0</span>
+    <a href="#overview">Docs</a>
+    <a href="https://github.com/montnetsint-collab/montnets-captcha-sdk" target="_blank" class="btn-github">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+      </svg>
+      GitHub
+    </a>
+  </div>
+</nav>
+
+<!-- ── Sidebar ──────────────────────────────────────────────────────────────── -->
+<aside class="sidebar">
+  <div class="sidebar-group">
+    <div class="sidebar-group-title">Getting Started</div>
+    <a href="#overview" class="active">Overview</a>
+    <a href="#quickstart">Quick Start</a>
+    <a href="#server-url">Server URL</a>
+    <a href="#auth-model">Authentication Model</a>
+  </div>
+  <div class="sidebar-group">
+    <div class="sidebar-group-title">Integration Flow</div>
+    <a href="#flow">Full Flow Diagram</a>
+    <a href="#security">Security Design</a>
+  </div>
+  <div class="sidebar-group">
+    <div class="sidebar-group-title">API Reference</div>
+    <a href="#api-init">POST /captcha/init <span class="sidebar-badge badge-post">POST</span></a>
+    <a href="#api-challenge">GET /captcha/challenge <span class="sidebar-badge badge-get">GET</span></a>
+    <a href="#api-submit">POST /captcha/challenge/submit <span class="sidebar-badge badge-post">POST</span></a>
+    <a href="#api-tokencheck">POST /captcha/token/check <span class="sidebar-badge badge-ss">S2S</span></a>
+  </div>
+  <div class="sidebar-group">
+    <div class="sidebar-group-title">SDK Integration</div>
+    <a href="#sdk-web">Web (JavaScript)</a>
+    <a href="#sdk-android">Android (Kotlin)</a>
+    <a href="#sdk-ios">iOS (Swift)</a>
+    <a href="#sdk-download">Download &amp; GitHub</a>
+  </div>
+  <div class="sidebar-group">
+    <div class="sidebar-group-title">Reference</div>
+    <a href="#error-codes">Error Codes</a>
+    <a href="#ttl-table">Token TTL Table</a>
+    <a href="#risk-engine">Risk Engine Rules</a>
+  </div>
+</aside>
+
+<!-- ── Main Content ──────────────────────────────────────────────────────────── -->
+<main class="main">
+
+  <!-- Hero -->
+  <div class="hero">
+    <h1>Montnets Captcha — Developer Documentation</h1>
+    <p>Sliding-puzzle captcha service for B2B integration. Protect your login flows, registration, and sensitive operations against automated bots with invisible-to-the-eye behavioral analysis.</p>
+    <div class="hero-meta">
+      <div class="hero-meta-item"><strong>Version</strong>1.0.0</div>
+      <div class="hero-meta-item"><strong>Protocol</strong>HTTPS / REST + JSON</div>
+      <div class="hero-meta-item"><strong>Auth</strong>appId + appSecret → accessToken</div>
+      <div class="hero-meta-item"><strong>Console</strong>enterprise.int-montnets.com</div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ── Overview ──────────────────────────────────────────────────────────── -->
+    <section id="overview">
+      <h2>Overview</h2>
+      <p>The Montnets Captcha service provides a <strong>sliding-puzzle challenge</strong> that combines visual verification with behavioral trajectory analysis. It is designed as a <strong>server-side-verified</strong> captcha, meaning the final judgment is always performed on your backend — never in the browser or app.</p>
+
+      <div class="info-cards">
+        <div class="info-card">
+          <div class="info-card-label">API Endpoints</div>
+          <div class="info-card-value">4</div>
+          <div class="info-card-sub">init · challenge · submit · token/check</div>
+        </div>
+        <div class="info-card">
+          <div class="info-card-label">Platforms</div>
+          <div class="info-card-value">Web · Android · iOS</div>
+          <div class="info-card-sub">Official SDKs &amp; demos available</div>
+        </div>
+        <div class="info-card">
+          <div class="info-card-label">Risk Engine</div>
+          <div class="info-card-value">Behavioral Analysis</div>
+          <div class="info-card-sub">Trajectory · timing · velocity</div>
+        </div>
+      </div>
+
+      <div class="callout info">
+        <span class="callout-icon">ℹ️</span>
+        <div>
+          <strong>appSecret must never appear in client-side code.</strong>
+          Your frontend or mobile app should call <em>your own backend</em>, which exchanges
+          <code>appId + appSecret</code> for an <code>accessToken</code>. Only the
+          <code>accessToken</code> is passed to the browser or app.
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Quick Start ────────────────────────────────────────────────────────── -->
+    <section id="quickstart">
+      <h2>Quick Start</h2>
+      <p>The minimum integration requires 5 steps:</p>
+
+      <div class="flow">
+        <div class="flow-step">
+          <div class="flow-num">1</div>
+          <div class="flow-body">
+            <div class="flow-title">Obtain credentials</div>
+            <div class="flow-desc">Log in to the <a href="https://enterprise.int-montnets.com:19762" target="_blank">Enterprise Management Console</a> to find your <code>appId</code> and <code>appSecret</code> under your application settings.</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num">2</div>
+          <div class="flow-body">
+            <div class="flow-title">Create a backend token endpoint</div>
+            <div class="flow-desc">Build a lightweight endpoint on <em>your</em> server (e.g. <code>GET /api/captcha-token</code>). It calls <code>POST /captcha/init</code> with your <code>appId + appSecret</code> and returns only the <code>accessToken</code> to the client.</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num">3</div>
+          <div class="flow-body">
+            <div class="flow-title">Integrate the SDK</div>
+            <div class="flow-desc">Add the SDK to your Web page, Android app, or iOS app. Provide a <code>tokenProvider</code> that calls your backend endpoint from Step 2.</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num">4</div>
+          <div class="flow-body">
+            <div class="flow-title">Receive the captchaToken</div>
+            <div class="flow-desc">When the user passes the challenge, the SDK calls your <code>onSuccess</code> callback with a <code>captchaToken</code>. Forward this token to your backend along with the login credentials.</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num">5</div>
+          <div class="flow-body">
+            <div class="flow-title">Verify server-side</div>
+            <div class="flow-desc">Your backend calls <code>POST /captcha/token/check</code> with <code>appId + captchaToken</code>. If <code>valid=true</code>, proceed with the business logic (login, registration, etc.).</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Server URL ─────────────────────────────────────────────────────────── -->
+    <section id="server-url">
+      <h2>Server URL</h2>
+      <p>All API requests use the following base URL. Replace <code>{env}</code> with the environment identifier provided by your account manager.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Environment</th><th>Base URL</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Production</strong></td><td><code>https://captcha-api.int-montnets.com</code></td><td>Live traffic</td></tr>
+            <tr><td><strong>Local dev</strong></td><td><code>http://localhost:8080</code></td><td>Self-hosted development instance</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout warning">
+        <span class="callout-icon">⚠️</span>
+        <div>
+          The exact production domain will be confirmed when your account is activated.
+          Please refer to the <a href="https://enterprise.int-montnets.com:19762" target="_blank">Enterprise Management Console</a> or your onboarding documentation for the official production URL.
+        </div>
+      </div>
+
+      <h3>Common request headers</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Header</th><th>Value</th><th>Required by</th></tr></thead>
+          <tbody>
+            <tr><td><code>Content-Type</code></td><td><code>application/json</code></td><td>All POST endpoints</td></tr>
+            <tr><td><code>X-Access-Token</code></td><td><code>{accessToken}</code></td><td><code>/challenge</code>, <code>/challenge/submit</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── Auth Model ─────────────────────────────────────────────────────────── -->
+    <section id="auth-model">
+      <h2>Authentication Model</h2>
+      <p>The service uses a <strong>two-layer token model</strong>:</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Token</th><th>Issued by</th><th>Used by</th><th>TTL</th><th>Caller</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><code>accessToken</code></td>
+              <td><code>POST /captcha/init</code></td>
+              <td><code>GET /captcha/challenge</code><br><code>POST /captcha/challenge/submit</code></td>
+              <td><span class="ttl">7200 s</span></td>
+              <td>Your backend → SDK</td>
+            </tr>
+            <tr>
+              <td><code>captchaToken</code></td>
+              <td><code>POST /captcha/challenge/submit</code></td>
+              <td><code>POST /captcha/token/check</code></td>
+              <td><span class="ttl">300 s</span></td>
+              <td>SDK → Your backend</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── Full Flow ──────────────────────────────────────────────────────────── -->
+    <section id="flow">
+      <h2>Full Integration Flow</h2>
+
+      <div class="code-block">
+        <div class="code-block-header">Integration sequence</div>
+        <pre>
+  ┌──────────────┐        ┌──────────────────┐        ┌─────────────────────┐
+  │  Client App  │        │   Your Backend   │        │  Montnets Captcha   │
+  │ (Web/iOS/And)│        │                  │        │      Service        │
+  └──────┬───────┘        └────────┬─────────┘        └──────────┬──────────┘
+         │                         │                              │
+         │  ① GET /api/captcha-token                             │
+         │ ───────────────────────►│                              │
+         │                         │  POST /captcha/init          │
+         │                         │  { appId, appSecret,         │
+         │                         │    timestamp, nonce }        │
+         │                         │ ────────────────────────────►│
+         │                         │◄────────────────────────────│
+         │                         │  { accessToken }             │
+         │◄───────────────────────│                              │
+         │  { accessToken }        │                              │
+         │                         │                              │
+         │  ② GET /captcha/challenge (Header: X-Access-Token)   │
+         │ ──────────────────────────────────────────────────── ►│
+         │◄──────────────────────────────────────────────────────│
+         │  { challengeId, bgImage, sliceImage, sliceY }         │
+         │                         │                              │
+         │  [User drags the slider — SDK records trajectory]     │
+         │                         │                              │
+         │  ③ POST /captcha/challenge/submit                     │
+         │     { challengeId, endX, trajectory, duration }       │
+         │ ──────────────────────────────────────────────────── ►│
+         │◄──────────────────────────────────────────────────────│
+         │  { passed: true, riskScore: 75,                       │
+         │    captchaToken: "xxx..." }                           │
+         │                         │                              │
+         │  ④ POST /api/login (+ captchaToken)                  │
+         │ ───────────────────────►│                              │
+         │                         │  POST /captcha/token/check   │
+         │                         │  { appId, captchaToken }     │
+         │                         │ ────────────────────────────►│
+         │                         │◄────────────────────────────│
+         │                         │  { valid: true, code: "SUCCESS" }
+         │                         │                              │
+         │                         │  [Proceed with login logic]  │
+         │◄───────────────────────│                              │
+         │  { session / JWT }      │                              │
+</pre>
+      </div>
+
+      <div class="callout success">
+        <span class="callout-icon">✅</span>
+        <div>
+          Steps ①②③ are handled automatically by the SDK.
+          Step ④ is handled entirely by your own backend — the <code>captchaToken</code>
+          never needs to be validated in the browser or mobile app.
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Security ───────────────────────────────────────────────────────────── -->
+    <section id="security">
+      <h2>Security Design</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Threat</th><th>Mitigation</th></tr></thead>
+          <tbody>
+            <tr><td>Replay attack on <code>/init</code></td><td>Timestamp window ±5 min — requests outside the window are rejected with <code>4002</code>.</td></tr>
+            <tr><td>Challenge replay / double-submit</td><td>Challenge encryptedX is atomically retrieved and deleted (<code>GETDEL</code>) on first submit — subsequent attempts fail with <code>CHALLENGE_INVALID</code>.</td></tr>
+            <tr><td>Token prediction</td><td>All tokens (accessToken, captchaToken) are generated with <code>SecureRandom</code>, 36-char base-62, ≥190 bits of entropy.</td></tr>
+            <tr><td>X-coordinate tampering</td><td>The target X position is stored server-side only and never returned to the client. Clients submit their measured <code>endX</code>; the server compares it against the stored value atomically.</td></tr>
+            <tr><td>Concurrent token consumption</td><td>Token check uses a Lua script executed atomically in Redis — no race conditions are possible.</td></tr>
+            <tr><td>appSecret exposure</td><td>appSecret is used only server-to-server (<code>/captcha/init</code>). SDKs use only <code>accessToken</code>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════════════════ -->
+    <!--  API REFERENCE                                                          -->
+    <!-- ════════════════════════════════════════════════════════════════════════ -->
+
+    <!-- ── POST /captcha/init ─────────────────────────────────────────────────── -->
+    <section id="api-init">
+      <h2>API Reference</h2>
+
+      <div class="api-section">
+        <div class="method">
+          <span class="method-badge POST">POST</span>
+          <span class="endpoint-path">/captcha/init</span>
+        </div>
+        <div class="api-section-title">Obtain an Access Token</div>
+        <div class="api-section-desc">
+          Called by <strong>your backend</strong>. Exchanges <code>appId + appSecret</code> for an
+          <code>accessToken</code> that the client SDK will use when loading challenges.
+          <strong>Never call this endpoint from browser or mobile app code.</strong>
+        </div>
+
+        <h4>Request body</h4>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>appId</code></td><td>string</td><td><span class="required">Required</span></td><td>Your application identifier. Available in the <a href="https://enterprise.int-montnets.com:19762" target="_blank">Enterprise Management Console</a>.</td></tr>
+              <tr><td><code>appSecret</code></td><td>string</td><td><span class="required">Required</span></td><td>Your application secret. Available in the <a href="https://enterprise.int-montnets.com:19762" target="_blank">Enterprise Management Console</a>. <strong>Keep this on your server only — never expose it in client-side code.</strong></td></tr>
+              <tr><td><code>timestamp</code></td><td>long</td><td><span class="required">Required</span></td><td>Current Unix timestamp in <strong>milliseconds</strong>. Must be within ±5 minutes of server time.</td></tr>
+              <tr><td><code>nonce</code></td><td>string</td><td><span class="required">Required</span></td><td>A random string for this request. Used for audit logging; not validated for uniqueness.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h4>Response — <code>data</code> object</h4>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>accessToken</code></td><td>string</td><td>36-char alphanumeric token. Pass this to the SDK's <code>tokenProvider</code>.</td></tr>
+              <tr><td><code>expiresIn</code></td><td>integer</td><td>Token lifetime in seconds. Always <code>7200</code> (2 hours).</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="tabs" id="tabs-init">
+          <button class="tab-btn active" onclick="switchTab('init','request')">Request</button>
+          <button class="tab-btn" onclick="switchTab('init','response-ok')">Response 200</button>
+          <button class="tab-btn" onclick="switchTab('init','response-err')">Error response</button>
+        </div>
+        <div class="tab-panel active" id="tab-init-request">
+          <div class="code-block" style="border-radius:0 6px 6px 6px;border-top:none">
+            <div class="code-block-header">POST /captcha/init</div>
+            <pre><span class="c">// Node.js backend example</span>
+<span class="k">const</span> res = <span class="k">await</span> fetch(<span class="s">'https://captcha-api.int-montnets.com/captcha/init'</span>, {
+  method:  <span class="s">'POST'</span>,
+  headers: { <span class="s">'Content-Type'</span>: <span class="s">'application/json'</span> },
+  body: JSON.stringify({
+    appId:     process.env.CAPTCHA_APP_ID,
+    appSecret: process.env.CAPTCHA_APP_SECRET,
+    timestamp: Date.now(),
+    nonce:     Math.random().toString(<span class="n">36</span>).slice(<span class="n">2</span>)
+  })
+});
+<span class="k">const</span> json = <span class="k">await</span> res.json();
+<span class="c">// json.data.accessToken — return this to the client</span></pre>
+          </div>
+        </div>
+        <div class="tab-panel" id="tab-init-response-ok">
+          <div class="code-block" style="border-radius:0 6px 6px 6px;border-top:none">
+            <div class="code-block-header">200 OK</div>
+            <pre>{
+  <span class="s">"success"</span>: <span class="k">true</span>,
+  <span class="s">"code"</span>: <span class="n">0</span>,
+  <span class="s">"message"</span>: <span class="s">"success"</span>,
+  <span class="s">"data"</span>: {
+    <span class="s">"accessToken"</span>: <span class="s">"K9mL2pQ5nR7vW3xYaB8cD1eF4gH6jI9k"</span>,
+    <span class="s">"expiresIn"</span>: <span class="n">7200</span>
+  }
+}</pre>
+          </div>
+        </div>
+        <div class="tab-panel" id="tab-init-response-err">
+          <div class="code-block" style="border-radius:0 6px 6px 6px;border-top:none">
+            <div class="code-block-header">Error — timestamp expired</div>
+            <pre>{
+  <span class="s">"success"</span>: <span class="k">false</span>,
+  <span class="s">"code"</span>: <span class="n">4002</span>,
+  <span class="s">"message"</span>: <span class="s">"Request timestamp expired, please check system clock."</span>,
+  <span class="s">"data"</span>: <span class="k">null</span>
+}</pre>
+          </div>
+        </div>
+      </div><!-- /.api-section -->
+    </section>
+
+    <!-- ── GET /captcha/challenge ─────────────────────────────────────────────── -->
+    <section id="api-challenge">
+      <div class="api-section">
+        <div class="method">
+          <span class="method-badge GET">GET</span>
+          <span class="endpoint-path">/captcha/challenge</span>
+        </div>
+        <div class="api-section-title">Fetch a Challenge</div>
+        <div class="api-section-desc">
+          Called automatically by the SDK. Returns the puzzle background image, slice image, and vertical position. The returned <code>challengeId</code> must be submitted with the slider result within <strong>3 minutes</strong>.
+        </div>
+
+        <h4>Request header</h4>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Header</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>X-Access-Token</code></td><td><span class="required">Required</span></td><td>A valid <code>accessToken</code> obtained from <code>/captcha/init</code>.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h4>Response — <code>data</code> object</h4>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>challengeId</code></td><td>string (UUID)</td><td>Unique identifier for this challenge. Pass it back in <code>/challenge/submit</code>.</td></tr>
+              <tr><td><code>bgImage</code></td><td>string (Base64 PNG)</td><td>Background image with the puzzle cutout. 640 × 320 px.</td></tr>
+              <tr><td><code>sliceImage</code></td><td>string (Base64 PNG)</td><td>The sliding piece. 70 × 70 px (60 px piece + 10 px shadow tab).</td></tr>
+              <tr><td><code>sliceY</code></td><td>integer</td><td>Vertical offset (px) where the slice should be placed over the background.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="tabs" id="tabs-challenge">
+          <button class="tab-btn active" onclick="switchTab('challenge','request')">Request</button>
+          <button class="tab-btn" onclick="switchTab('challenge','response-ok')">Response 200</button>
+        </div>
+        <div class="tab-panel active" id="tab-challenge-request">
+          <div class="code-block" style="border-radius:0 6px 6px 6px;border-top:none">
+            <div class="code-block-header">GET /captcha/challenge</div>
+            <pre>curl -X GET <span class="s">'https://captcha-api.int-montnets.com/captcha/challenge'</span> \
+  -H <span class="s">'X-Access-Token: K9mL2pQ5nR7vW3xYaB8cD1eF4gH6jI9k'</span></pre>
+          </div>
+        </div>
+        <div class="tab-panel" id="tab-challenge-response-ok">
+          <div class="code-block" style="border-radius:0 6px 6px 6px;border-top:none">
+            <div class="code-block-header">200 OK</div>
+            <pre>{
+  <span class="s">"success"</span>: <span class="k">true</span>,
+  <span class="s">"code"</span>: <span class="n">0</span>,
+  <span class="s">"message"</span>: <span class="s">"success"</span>,
+  <span class="s">"data"</span>: {
+    <span class="s">"challengeId"</span>: <span class="s">"550e8400-e29b-41d4-a716-446655440000"</span>,
+    <span class="s">"bgImage"</span>:     <span class="s">"iVBORw0KGgoAAAANSUhEUgAA..."</span>,  <span class="c">// Base64 PNG</span>
+    <span class="s">"sliceImage"</span>:  <span class="s">"iVBORw0KGgoAAAANSUhEUgAA..."</span>,  <span class="c">// Base64 PNG</span>
+    <span class="s">"sliceY"</span>:      <span class="n">42</span>
+  }
+}</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── POST /captcha/challenge/submit ─────────────────────────────────────── -->
+    <section id="api-submit">
+      <div class="api-section">
+        <div class="method">
+          <span class="method-badge POST">POST</span>
+          <span class="endpoint-path">/captcha/challenge/submit</span>
+        </div>
+        <div class="api-section-title">Submit Slider Result</div>
+        <div class="api-section-desc">
+          Called automatically by the SDK after the user releases the slider.
+          The service decrypts the target position, checks the coordinate, and runs the
+          behavioral risk engine. Returns a <code>captchaToken</code> if <code>riskScore ≥ 60</code>.
+        </div>
+
+        <h4>Request body</h4>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>challengeId</code></td><td>string</td><td><span class="required">Required</span></td><td>The <code>challengeId</code> received from <code>/captcha/challenge</code>.</td></tr>
+              <tr><td><code>endX</code></td><td>integer</td><td><span class="required">Required</span></td><td>Final X-coordinate of the slider in natural image pixels.</td></tr>
+              <tr><td><code>trajectory</code></td><td>array</td><td><span class="required">Required</span></td><td>Ordered list of pointer positions recorded during the drag. See below.</td></tr>
+              <tr><td><code>trajectory[].x</code></td><td>integer</td><td><span class="required">Required</span></td><td>X-coordinate of the pointer at this sample.</td></tr>
+              <tr><td><code>trajectory[].y</code></td><td>integer</td><td><span class="required">Required</span></td><td>Y-coordinate of the pointer at this sample.</td></tr>
+              <tr><td><code>trajectory[].t</code></td><td>long</td><td><span class="required">Required</span></td><td>Elapsed time in milliseconds since drag start (first point = 0).</td></tr>
+              <tr><td><code>duration</code></td><td>integer</td><td><span class="required">Required</span></td><td>Total drag duration in milliseconds.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h4>Response — <code>data</code> object</h4>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>passed</code></td><td>boolean</td><td><code>true</code> when <code>riskScore ≥ 60</code>.</td></tr>
+              <tr><td><code>riskScore</code></td><td>integer (0–100)</td><td>Behavioral risk score. Higher = more human-like.</td></tr>
+              <tr><td><code>captchaToken</code></td><td>string | null</td><td>36-char token issued on pass. Pass to your backend for server-side verification. <code>null</code> on failure.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="tabs" id="tabs-submit">
+          <button class="tab-btn active" onclick="switchTab('submit','request')">Request</button>
+          <button class="tab-btn" onclick="switchTab('submit','pass')">Response — Pass</button>
+          <button class="tab-btn" onclick="switchTab('submit','fail')">Response — Fail</button>
+        </div>
+        <div class="tab-panel active" id="tab-submit-request">
+          <div class="code-block" style="border-radius:0 6px 6px 6px;border-top:none">
+            <div class="code-block-header">POST /captcha/challenge/submit</div>
+            <pre>{
+  <span class="s">"challengeId"</span>: <span class="s">"550e8400-e29b-41d4-a716-446655440000"</span>,
+  <span class="s">"endX"</span>: <span class="n">142</span>,
+  <span class="s">"trajectory"</span>: [
+    { <span class="s">"x"</span>: <span class="n">10</span>,  <span class="s">"y"</span>: <span class="n">150</span>, <span class="s">"t"</span>: <span class="n">0</span>    },
+    { <span class="s">"x"</span>: <span class="n">35</span>,  <span class="s">"y"</span>: <span class="n">148</span>, <span class="s">"t"</span>: <span class="n">220</span>  },
+    { <span class="s">"x"</span>: <span class="n">80</span>,  <span class="s">"y"</span>: <span class="n">152</span>, <span class="s">"t"</span>: <span class="n">980</span>  },
+    { <span class="s">"x"</span>: <span class="n">142</span>, <span class="s">"y"</span>: <span class="n">155</span>, <span class="s">"t"</span>: <span class="n">2800</span> }
+  ],
+  <span class="s">"duration"</span>: <span class="n">2850</span>
+}</pre>
+          </div>
+        </div>
+        <div class="tab-panel" id="tab-submit-pass">
+          <div class="code-block" style="border-radius:0 6px 6px 6px;border-top:none">
+            <div class="code-block-header">passed = true</div>
+            <pre>{
+  <span class="s">"success"</span>: <span class="k">true</span>, <span class="s">"code"</span>: <span class="n">0</span>, <span class="s">"message"</span>: <span class="s">"success"</span>,
+  <span class="s">"data"</span>: {
+    <span class="s">"passed"</span>:       <span class="k">true</span>,
+    <span class="s">"riskScore"</span>:    <span class="n">75</span>,
+    <span class="s">"captchaToken"</span>: <span class="s">"aB3cD5eF7gH9iJ1kL3mN5oP7qR9sT1uV"</span>
+  }
+}</pre>
+          </div>
+        </div>
+        <div class="tab-panel" id="tab-submit-fail">
+          <div class="code-block" style="border-radius:0 6px 6px 6px;border-top:none">
+            <div class="code-block-header">passed = false</div>
+            <pre>{
+  <span class="s">"success"</span>: <span class="k">true</span>, <span class="s">"code"</span>: <span class="n">0</span>, <span class="s">"message"</span>: <span class="s">"success"</span>,
+  <span class="s">"data"</span>: {
+    <span class="s">"passed"</span>:       <span class="k">false</span>,
+    <span class="s">"riskScore"</span>:    <span class="n">35</span>,
+    <span class="s">"captchaToken"</span>: <span class="k">null</span>
+  }
+}</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── POST /captcha/token/check ──────────────────────────────────────────── -->
+    <section id="api-tokencheck">
+      <div class="api-section">
+        <div class="method">
+          <span class="method-badge POST">POST</span>
+          <span class="endpoint-path">/captcha/token/check</span>
+        </div>
+        <div class="api-section-title">Verify &amp; Consume a Captcha Token</div>
+        <div class="api-section-desc">
+          Called by <strong>your backend</strong>. Atomically verifies and consumes the
+          <code>captchaToken</code> issued by <code>/challenge/submit</code>.
+          This call is <strong>idempotent</strong>: a consumed token returns <code>valid=true</code> with code <code>TOKEN_CONSUMED</code>, safe to retry.
+        </div>
+
+        <h4>Request body</h4>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>appId</code></td><td>string</td><td><span class="required">Required</span></td><td>Must match the <code>appId</code> used when issuing the token.</td></tr>
+              <tr><td><code>captchaToken</code></td><td>string</td><td><span class="required">Required</span></td><td>The token received from the client via <code>/challenge/submit</code>.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h4>Response — <code>data</code> object</h4>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>valid</code></td><td>boolean</td><td><code>true</code> when code is <code>SUCCESS</code> or <code>TOKEN_CONSUMED</code>.</td></tr>
+              <tr><td><code>code</code></td><td>string</td><td>Token status. See the status code table below.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h4>Token status codes</h4>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>code</th><th>valid</th><th>Meaning</th><th>Action</th></tr></thead>
+            <tbody>
+              <tr><td><code>SUCCESS</code></td><td><span class="tstate tstate-ok">true</span></td><td>First-time consumption. Token is valid.</td><td>Proceed with business logic.</td></tr>
+              <tr><td><code>TOKEN_CONSUMED</code></td><td><span class="tstate tstate-ok">true</span></td><td>Token was already consumed (idempotent retry).</td><td>Proceed normally — safe to retry.</td></tr>
+              <tr><td><code>TOKEN_EXPIRED</code></td><td><span class="tstate tstate-err">false</span></td><td>Token exceeded its 5-minute lifetime.</td><td>Ask user to retry the captcha.</td></tr>
+              <tr><td><code>TOKEN_INVALID</code></td><td><span class="tstate tstate-err">false</span></td><td><code>appId</code> mismatch — token exists but belongs to a different app. (Token not found returns <code>TOKEN_EXPIRED</code>.)</td><td>Check <code>appId</code> config; ask user to retry.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="tabs" id="tabs-tokencheck">
+          <button class="tab-btn active" onclick="switchTab('tokencheck','request')">Request</button>
+          <button class="tab-btn" onclick="switchTab('tokencheck','success')">SUCCESS</button>
+          <button class="tab-btn" onclick="switchTab('tokencheck','consumed')">TOKEN_CONSUMED</button>
+          <button class="tab-btn" onclick="switchTab('tokencheck','expired')">TOKEN_EXPIRED</button>
+        </div>
+        <div class="tab-panel active" id="tab-tokencheck-request">
+          <div class="code-block" style="border-radius:0 6px 6px 6px;border-top:none">
+            <div class="code-block-header">POST /captcha/token/check</div>
+            <pre>{
+  <span class="s">"appId"</span>:        <span class="s">"YOUR_APP_ID"</span>,
+  <span class="s">"captchaToken"</span>: <span class="s">"aB3cD5eF7gH9iJ1kL3mN5oP7qR9sT1uV"</span>
+}</pre>
+          </div>
+        </div>
+        <div class="tab-panel" id="tab-tokencheck-success">
+          <div class="code-block" style="border-radius:0 6px 6px 6px;border-top:none">
+            <div class="code-block-header">First consumption</div>
+            <pre>{ <span class="s">"success"</span>: <span class="k">true</span>, <span class="s">"code"</span>: <span class="n">0</span>, <span class="s">"data"</span>: { <span class="s">"valid"</span>: <span class="k">true</span>, <span class="s">"code"</span>: <span class="s">"SUCCESS"</span> } }</pre>
+          </div>
+        </div>
+        <div class="tab-panel" id="tab-tokencheck-consumed">
+          <div class="code-block" style="border-radius:0 6px 6px 6px;border-top:none">
+            <div class="code-block-header">Already consumed</div>
+            <pre>{ <span class="s">"success"</span>: <span class="k">true</span>, <span class="s">"code"</span>: <span class="n">0</span>, <span class="s">"data"</span>: { <span class="s">"valid"</span>: <span class="k">true</span>, <span class="s">"code"</span>: <span class="s">"TOKEN_CONSUMED"</span> } }</pre>
+          </div>
+        </div>
+        <div class="tab-panel" id="tab-tokencheck-expired">
+          <div class="code-block" style="border-radius:0 6px 6px 6px;border-top:none">
+            <div class="code-block-header">Token expired</div>
+            <pre>{ <span class="s">"success"</span>: <span class="k">true</span>, <span class="s">"code"</span>: <span class="n">0</span>, <span class="s">"data"</span>: { <span class="s">"valid"</span>: <span class="k">false</span>, <span class="s">"code"</span>: <span class="s">"TOKEN_EXPIRED"</span> } }</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════════════════ -->
+    <!--  SDK INTEGRATION                                                        -->
+    <!-- ════════════════════════════════════════════════════════════════════════ -->
+
+    <!-- ── Web SDK ────────────────────────────────────────────────────────────── -->
+    <section id="sdk-web">
+      <h2>SDK Integration</h2>
+      <h3>Web (JavaScript)</h3>
+      <p>Include <code>montnets-captcha-sdk.js</code> in your HTML. The SDK exposes a single global object <code>window.CaptchaSDK</code>. — <a href="https://github.com/montnetsint-collab/montnets-captcha-sdk/tree/main/web" target="_blank">View source &amp; README on GitHub</a></p>
+
+      <div class="code-block">
+        <div class="code-block-header">HTML + JavaScript</div>
+        <pre><span class="c">&lt;!-- Step 1: Load the SDK --&gt;</span>
+&lt;script src=<span class="s">"/montnets-captcha-sdk.js"</span>&gt;&lt;/script&gt;
+
+&lt;script&gt;
+<span class="c">// Step 2: Initialise once on page load</span>
+CaptchaSDK.init({
+  serverUrl: <span class="s">'https://captcha-api.int-montnets.com'</span>,
+
+  <span class="c">// tokenProvider: call YOUR backend — never expose appSecret in the browser</span>
+  tokenProvider: <span class="k">async</span> () =&gt; {
+    <span class="k">const</span> res = <span class="k">await</span> fetch(<span class="s">'/api/captcha-token'</span>);
+    <span class="k">return</span> (<span class="k">await</span> res.json()).accessToken;
+  },
+
+  <span class="c">// onSuccess: receives captchaToken after the user passes</span>
+  onSuccess: (captchaToken) =&gt; {
+    <span class="c">// Forward to your backend together with login credentials</span>
+    myServer.login(username, password, captchaToken);
+  }
+});
+
+<span class="c">// Optional: pre-fetch token to eliminate open latency</span>
+CaptchaSDK.warmup();
+
+<span class="c">// Step 3: Trigger from your button</span>
+document.getElementById(<span class="s">'btn-login'</span>).onclick = () =&gt; CaptchaSDK.show();
+&lt;/script&gt;</pre>
+      </div>
+
+      <h4>CaptchaSDK API</h4>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Method</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>CaptchaSDK.init(config)</code></td><td>Initialise. Must be called once before any other method.</td></tr>
+            <tr><td><code>CaptchaSDK.show()</code></td><td>Open the captcha modal.</td></tr>
+            <tr><td><code>CaptchaSDK.close()</code></td><td>Programmatically close the modal.</td></tr>
+            <tr><td><code>CaptchaSDK.warmup()</code></td><td>Pre-fetch and cache the accessToken (returns Promise).</td></tr>
+            <tr><td><code>CaptchaSDK.clearCache()</code></td><td>Clear locally cached accessToken.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── Android SDK ────────────────────────────────────────────────────────── -->
+    <section id="sdk-android">
+      <h3>Android (Kotlin)</h3>
+      <p>Copy <code>MontnetsCaptcha.kt</code> and <code>captcha_bridge.html</code> into your project. — <a href="https://github.com/montnetsint-collab/montnets-captcha-sdk/tree/main/android" target="_blank">View source &amp; README on GitHub</a></p>
+
+      <div class="callout info">
+        <span class="callout-icon">📋</span>
+        <div>Add <code>&lt;uses-permission android:name="android.permission.INTERNET"/&gt;</code> to your <code>AndroidManifest.xml</code>. Place <code>captcha_bridge.html</code> in <code>app/src/main/assets/</code>.</div>
+      </div>
+
+      <div class="code-block">
+        <div class="code-block-header">Kotlin — MainActivity.kt</div>
+        <pre>MontnetsCaptcha.show(
+    activity  = <span class="k">this</span>,
+    serverUrl = <span class="s">"https://captcha-api.int-montnets.com"</span>,
+
+    <span class="c">// tokenProvider: call YOUR backend — never put appSecret in the app</span>
+    tokenProvider = { callback -&gt;
+        MyServer.getCaptchaToken(
+            onResult = { token -&gt; callback(token, <span class="k">null</span>) },
+            onError  = { err   -&gt; callback(<span class="k">null</span>, err.message) }
+        )
+    },
+
+    onSuccess = { captchaToken -&gt;
+        <span class="c">// Forward to your backend for server-side verification</span>
+        MyServer.login(username, password, captchaToken)
+    },
+
+    onError = { message -&gt;
+        Toast.makeText(<span class="k">this</span>, <span class="s">"Captcha error: $message"</span>, Toast.LENGTH_SHORT).show()
+    }
+)</pre>
+      </div>
+    </section>
+
+    <!-- ── iOS SDK ────────────────────────────────────────────────────────────── -->
+    <section id="sdk-ios">
+      <h3>iOS (Swift)</h3>
+      <p>Copy <code>MontnetsCaptcha.swift</code> and <code>captcha_bridge.html</code> into your Xcode project. Ensure <code>captcha_bridge.html</code> is listed under <strong>Build Phases → Copy Bundle Resources</strong>. — <a href="https://github.com/montnetsint-collab/montnets-captcha-sdk/tree/main/ios" target="_blank">View source &amp; README on GitHub</a></p>
+
+      <div class="code-block">
+        <div class="code-block-header">Swift — ViewController.swift</div>
+        <pre>MontnetsCaptcha.show(
+    from:      <span class="k">self</span>,
+    serverUrl: <span class="s">"https://captcha-api.int-montnets.com"</span>,
+
+    <span class="c">// tokenProvider: call YOUR backend — never put appSecret in the app</span>
+    tokenProvider: { completion <span class="k">in</span>
+        MyServer.getCaptchaToken { token, error <span class="k">in</span>
+            completion(token, error?.localizedDescription)
+        }
+    },
+
+    onSuccess: { captchaToken <span class="k">in</span>
+        <span class="c">// Forward to your backend for server-side verification</span>
+        MyServer.login(username: username, password: password,
+                       captchaToken: captchaToken)
+    },
+
+    onError: { message <span class="k">in</span>
+        print(<span class="s">"Captcha error: \(message)"</span>)
+    }
+)</pre>
+      </div>
+    </section>
+
+    <!-- ── Download / GitHub ──────────────────────────────────────────────────── -->
+    <section id="sdk-download">
+      <h3>Download &amp; GitHub</h3>
+      <p>All SDK source files, integration demos, and this documentation are hosted on GitHub:</p>
+
+      <div class="callout success">
+        <span class="callout-icon">🔗</span>
+        <div>
+          <strong>GitHub Repository:</strong><br>
+          <a href="https://github.com/montnetsint-collab/montnets-captcha-sdk" target="_blank">
+            https://github.com/montnetsint-collab/montnets-captcha-sdk
+          </a>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Platform</th><th>Files to copy</th><th>Demo</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>Web (JS)</strong></td>
+              <td>
+                <a href="https://github.com/montnetsint-collab/montnets-captcha-sdk/blob/main/web/montnets-captcha-sdk.js" target="_blank"><code>web/montnets-captcha-sdk.js</code></a>
+              </td>
+              <td>
+                <a href="https://github.com/montnetsint-collab/montnets-captcha-sdk/blob/main/web/montnets-captcha-demo.html" target="_blank"><code>montnets-captcha-demo.html</code></a>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Web (Node.js)</strong></td>
+              <td>
+                <a href="https://github.com/montnetsint-collab/montnets-captcha-sdk/tree/main/web/node-demo" target="_blank"><code>web/node-demo/</code></a>
+              </td>
+              <td>
+                <a href="https://github.com/montnetsint-collab/montnets-captcha-sdk/blob/main/web/node-demo/README.md" target="_blank">README</a>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Android</strong></td>
+              <td>
+                <a href="https://github.com/montnetsint-collab/montnets-captcha-sdk/blob/main/android/MontnetsCaptcha.kt" target="_blank"><code>android/MontnetsCaptcha.kt</code></a><br>
+                <a href="https://github.com/montnetsint-collab/montnets-captcha-sdk/blob/main/android/captcha_bridge.html" target="_blank"><code>android/captcha_bridge.html</code></a> → <code>assets/</code>
+              </td>
+              <td>
+                <a href="https://github.com/montnetsint-collab/montnets-captcha-sdk/tree/main/android/demo" target="_blank"><code>android/demo/</code></a>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>iOS</strong></td>
+              <td>
+                <a href="https://github.com/montnetsint-collab/montnets-captcha-sdk/blob/main/ios/MontnetsCaptcha.swift" target="_blank"><code>ios/MontnetsCaptcha.swift</code></a><br>
+                <a href="https://github.com/montnetsint-collab/montnets-captcha-sdk/blob/main/ios/captcha_bridge.html" target="_blank"><code>ios/captcha_bridge.html</code></a> → Bundle Resources
+              </td>
+              <td>
+                <a href="https://github.com/montnetsint-collab/montnets-captcha-sdk/tree/main/ios/demo" target="_blank"><code>ios/demo/</code></a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════════════════ -->
+    <!--  REFERENCE TABLES                                                       -->
+    <!-- ════════════════════════════════════════════════════════════════════════ -->
+
+    <!-- ── Error Codes ───────────────────────────────────────────────────────── -->
+    <section id="error-codes">
+      <h2>Error Codes</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>code</th><th>HTTP</th><th>Endpoint</th><th>Meaning</th><th>Recommended action</th></tr></thead>
+          <tbody>
+            <tr><td><code>0</code></td><td><span class="status status-200">200</span></td><td>All</td><td>Success.</td><td>—</td></tr>
+            <tr><td><code>4001</code></td><td><span class="status status-400">400</span></td><td>/init</td><td>Missing required parameter (<code>appId</code>, <code>appSecret</code>, <code>timestamp</code>, or <code>nonce</code>).</td><td>Check request body.</td></tr>
+            <tr><td><code>4002</code></td><td><span class="status status-400">400</span></td><td>/init</td><td>Request timestamp deviates more than ±5 minutes from server time.</td><td>Sync system clock (NTP).</td></tr>
+            <tr><td><code>4003</code></td><td><span class="status status-401">401</span></td><td>/init</td><td>Invalid <code>appId</code> or <code>appSecret</code>.</td><td>Verify credentials in the <a href="https://enterprise.int-montnets.com:19762" target="_blank">Enterprise Management Console</a>.</td></tr>
+            <tr><td><code>401</code></td><td><span class="status status-401">401</span></td><td>/challenge, /submit</td><td><code>accessToken</code> missing, invalid, or expired.</td><td>Re-call <code>/captcha/init</code> to obtain a fresh token.</td></tr>
+            <tr><td><code>4004</code></td><td><span class="status status-400">400</span></td><td>/submit</td><td>Challenge not found, expired (TTL 180 s), or already consumed.</td><td>Reload the challenge and ask user to retry.</td></tr>
+            <tr><td><code>5001</code></td><td><span class="status status-503">503</span></td><td>/init</td><td>Authentication backend (UMS) unreachable after 3 retries. System degraded gracefully — token is still issued with empty <code>spId</code>/<code>spName</code>.</td><td>Alert on repeated occurrences; contact support.</td></tr>
+            <tr><td><code>9999</code></td><td><span class="status status-500">500</span></td><td>All</td><td>Internal server error.</td><td>Retry with backoff; contact support if persistent.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── TTL Table ──────────────────────────────────────────────────────────── -->
+    <section id="ttl-table">
+      <h2>Token TTL Reference</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Token / Key</th><th>TTL</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>accessToken</code></td><td><span class="ttl">7200 s</span></td><td>Cached by the SDK in <code>sessionStorage</code>; auto-refreshed on expiry.</td></tr>
+            <tr><td><code>challengeId</code></td><td><span class="ttl">180 s</span></td><td>Deleted atomically on first submit. Expired challenges return error <code>4004</code>.</td></tr>
+            <tr><td><code>captchaToken</code></td><td><span class="ttl">300 s</span></td><td>Your backend must call <code>/token/check</code> within 5 minutes of receiving it.</td></tr>
+            <tr><td>Consumed token marker</td><td><span class="ttl">30 s</span></td><td>After consumption the token value is set to <code>CONSUMED</code> for 30 s to support idempotent retries.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── Risk Engine ────────────────────────────────────────────────────────── -->
+    <section id="risk-engine">
+      <h2>Risk Engine Rules</h2>
+      <p>The risk engine assigns a score from 0 to 100 based on multiple behavioral dimensions. A score of <strong>60 or above</strong> results in a <code>captchaToken</code> being issued.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Score range</th><th>Result</th><th>captchaToken issued</th></tr></thead>
+          <tbody>
+            <tr><td>≥ 60</td><td><code>PASS</code></td><td>Yes</td></tr>
+            <tr><td>40 – 59</td><td><code>FAIL</code></td><td>No — user may retry</td></tr>
+            <tr><td>&lt; 40</td><td><code>BLOCK</code></td><td>No — strongly automated</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>Scoring dimensions</h4>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Dimension</th><th>Normal range</th><th>Anomaly signal</th></tr></thead>
+          <tbody>
+            <tr><td>Trajectory point count</td><td>50 – 300 points</td><td>&lt; 50 (too few) or &gt; 300 (too many / replay)</td></tr>
+            <tr><td>Total drag duration</td><td>300 ms – 8000 ms</td><td>&lt; 300 ms (bot fast-fill) or &gt; 8 s (scripted pause)</td></tr>
+            <tr><td>Velocity variance</td><td>≥ 0.0001</td><td>Constant velocity (linear interpolation) → suspected bot</td></tr>
+            <tr><td>Jitter (micro-tremor)</td><td>Present</td><td>Perfectly smooth trajectory → suspected bot</td></tr>
+            <tr><td>Pause count</td><td>1 – 3 pauses</td><td>0 pauses (inhuman) or &gt; 3 (scripted hesitation)</td></tr>
+            <tr><td>Coordinate accuracy</td><td>|endX − realX| ≤ 5 px</td><td>Exceeds tolerance → immediate BLOCK, score = 0</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout info">
+        <span class="callout-icon">ℹ️</span>
+        <div>Coordinate tolerance and score thresholds are fixed server-side and cannot be adjusted per application. Contact support if you observe false-positive rates that affect your users.</div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <div style="margin-top:60px;padding-top:24px;border-top:1px solid var(--gray-200);font-size:12px;color:var(--gray-400);">
+      &copy; MONTNETS INTERNATIONAL COMMUNICATIONS (HK) CO., LTD &nbsp;·&nbsp;
+      <a href="https://www.int-montnets.com" target="_blank">www.int-montnets.com</a> &nbsp;·&nbsp;
+      <a href="https://enterprise.int-montnets.com:19762" target="_blank">Enterprise Console</a> &nbsp;·&nbsp;
+      <a href="https://github.com/montnetsint-collab/montnets-captcha-sdk" target="_blank">GitHub</a>
+    </div>
+
+  </div><!-- /.content -->
+</main><!-- /.main -->
+
+<script>
+  /* ── Tab switcher ──────────────────────────────────────────────────────────── */
+  function switchTab(group, name) {
+    var panels = document.querySelectorAll('[id^="tab-' + group + '-"]');
+    var btns   = document.querySelectorAll('#tabs-' + group + ' .tab-btn');
+    panels.forEach(function(p) { p.classList.remove('active'); });
+    btns.forEach(function(b)   { b.classList.remove('active'); });
+    var target = document.getElementById('tab-' + group + '-' + name);
+    if (target) target.classList.add('active');
+    var idx = Array.from(btns).findIndex(function(b) {
+      return b.getAttribute('onclick') && b.getAttribute('onclick').includes("'" + name + "'");
+    });
+    if (btns[idx]) btns[idx].classList.add('active');
+  }
+
+  /* ── Sidebar active link on scroll ───────────────────────────────────────── */
+  var sections = document.querySelectorAll('section[id]');
+  var navLinks = document.querySelectorAll('.sidebar a');
+
+  function onScroll() {
+    var scrollY = window.scrollY + 80;
+    var current = '';
+    sections.forEach(function(sec) {
+      if (sec.offsetTop <= scrollY) current = sec.id;
+    });
+    navLinks.forEach(function(a) {
+      a.classList.remove('active');
+      if (a.getAttribute('href') === '#' + current) a.classList.add('active');
+    });
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+</script>
+</body>
+</html>
