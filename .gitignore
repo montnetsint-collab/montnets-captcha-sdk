@@ -16,3 +16,12 @@ local.properties
 *.xcuserdata
 DerivedData/
 Pods/
+
+*/node_modules/
+*/dist/
+*/.git/
+node_modules
+dist
+.env
+.gitkeep
+
